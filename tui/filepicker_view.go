@@ -86,7 +86,7 @@ func (m *MainModel) handleFilepickerView() string {
 
 func GetFilePicker() filepicker.Model {
 	fp := filepicker.New()
-	fp.AllowedTypes = []string{".mod", ".sum", ".go", ".txt", ".md"}
+	fp.AllowedTypes = []string{".mod", ".sum", ".go", ".txt", ".md", ".log", ".jmx", ".properties"}
 	fp.CurrentDirectory, _ = os.Getwd()
 	fp.AutoHeight = false
 	fp.Height = 15

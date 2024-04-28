@@ -187,7 +187,7 @@ func prepareRunInfo(pods []PodInfo) string {
 
 func (m MainModel) GetConfirmationDialog() *huh.Confirm {
 	return huh.NewConfirm().
-		Title("Do you want to proceed with this config?").
+		Title(accentInfo.Render("Do you want to proceed with this config?")).
 		Affirmative("Yes").
 		Negative("No").
 		Key("conf").

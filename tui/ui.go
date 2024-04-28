@@ -18,7 +18,6 @@ var (
 	cursorStyle         = focusedStyle.Copy()
 	noStyle             = lipgloss.NewStyle()
 	helpStyle           = blurredStyle.Copy()
-	cursorModeHelpStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("244"))
 
 	focusedButton = focusedStyle.Copy().Render("[ Submit ]")
 	blurredButton = fmt.Sprintf("[ %s ]", blurredStyle.Render("Submit"))
@@ -34,10 +33,10 @@ var (
 	configInfoStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#FFFDF5"))
 	accentInfo = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#4287f5"))
+			Foreground(lipgloss.Color("#f54287"))
 	podLabelStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#ffffff")).
-			Background(lipgloss.Color("#44ab30")).
+			Background(lipgloss.Color("#378524")).
 			PaddingLeft(1).
 			PaddingRight(1)
 	divider = lipgloss.NewStyle().
