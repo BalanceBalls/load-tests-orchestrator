@@ -33,11 +33,6 @@ var (
 	dotStyle      = helpStyle.Copy().UnsetMargins()
 	durationStyle = dotStyle.Copy()
 	appStyle      = lipgloss.NewStyle().Margin(1, 2, 0, 2)
-	podLabelStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#ffffff")).
-			Background(lipgloss.Color("#44ab30")).
-			PaddingLeft(1).
-			PaddingRight(1)
 	stepNameStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#ebeb13"))
 )
 

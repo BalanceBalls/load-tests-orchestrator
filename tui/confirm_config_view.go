@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/viewport"
@@ -33,6 +32,12 @@ var (
 				MarginRight(2).
 				Underline(true)
 
+	propsStyle = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#3268a8")).
+		Italic(true).
+		MarginLeft(1)
+		
+
 	subtle = lipgloss.AdaptiveColor{Light: "#D9DCCF", Dark: "#383838"}
 
 	titleStyle = func() lipgloss.Style {
@@ -48,7 +53,8 @@ var (
 	}()
 )
 
-const useHighPerformanceRenderer = false
+const useHighPerformanceRenderer = true
+const viewportHeight = 20
 
 type ConfirmationModel struct {
 	isConfirmed      bool
@@ -64,7 +70,6 @@ func (m *MainModel) handleConfirmationUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds []tea.Cmd
 	)
 
-	sc := m.setupConfirmation
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -72,6 +77,9 @@ func (m *MainModel) handleConfirmationUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case "b":
 			m.currentView = PodsSetup
+		case "ctrl+p":
+			setupPods(m)
+			return m, m.preparation.spinner.Tick
 		case "c":
 			if m.setupConfirmation.isConfirmed {
 				setupPods(m)
@@ -79,16 +87,9 @@ func (m *MainModel) handleConfirmationUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 	case tea.WindowSizeMsg:
-		headerHeight := lipgloss.Height(sc.headerView())
-		footerHeight := lipgloss.Height(sc.footerView())
-		verticalMarginHeight := headerHeight + footerHeight
-
 		m.setupConfirmation.viewport.Width = msg.Width
-		m.setupConfirmation.viewport.Height = msg.Height - verticalMarginHeight
-
-		if useHighPerformanceRenderer {
-			cmds = append(cmds, viewport.Sync(m.setupConfirmation.viewport))
-		}
+		m.setupConfirmation.viewport.Height = viewportHeight
+		cmds = append(cmds, viewport.Sync(m.setupConfirmation.viewport))
 	}
 
 	cf, fCmd := m.setupConfirmation.confirmationForm.Update(msg)
@@ -133,39 +134,19 @@ func (m MainModel) handleConfirmationView() string {
 		conf = "\n" + m.setupConfirmation.confirmationForm.View()
 	}
 
-	if m.setupConfirmation.confirmationForm.GetBool("conf") {
+	if m.setupConfirmation.isConfirmed {
 		conf += "\n" + alertStyle.Render("Configuration confirmed! Press 'c' to continue")
 	}
 
-	return fmt.Sprintf("%s\n%s\n%s\n%s\n%s\n",
-		m.setupConfirmation.headerView(),
+	return fmt.Sprintf("%s\n%s\n%s\n",
 		m.setupConfirmation.viewport.View(),
 		conf,
-		m.setupConfirmation.footerView(),
 		helpMsg)
 }
 
-func (m ConfirmationModel) headerView() string {
-	title := titleStyle.Render("Config review")
-	line := strings.Repeat("─", max(0, m.viewport.Width-lipgloss.Width(title)))
-	return lipgloss.JoinHorizontal(lipgloss.Center, title, line)
-}
-
-func (m ConfirmationModel) footerView() string {
-	info := infoStyle.Render(fmt.Sprintf("%3.f%%", m.viewport.ScrollPercent()*100))
-	line := strings.Repeat("─", max(0, m.viewport.Width-lipgloss.Width(info)))
-	return lipgloss.JoinHorizontal(lipgloss.Center, line, info)
-}
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
-
 func (m MainModel) InitConfirmation() ConfirmationModel {
-	vp := viewport.New(70, 30)
+	vp := viewport.New(70, viewportHeight)
+	vp.MouseWheelEnabled = true
 	vp.SetContent(prepareRunInfo(m.pods))
 
 	f := huh.NewForm(huh.NewGroup(m.GetConfirmationDialog()))
@@ -186,16 +167,19 @@ func prepareRunInfo(pods []PodInfo) string {
 
 	b.WriteString(accentInfo.Render("\nThe test will run with the following configuration:\n"))
 	for _, pod := range pods {
-		b.WriteString(configInfoStyle.Render("\nPod name: " + pod.name))
-		b.WriteString(configInfoStyle.Render("\nScenario file :" + pod.scenarioFilePath))
-		b.WriteString(configInfoStyle.Render("\nProperties file: " + pod.propsFilePath))
+		podLabel := podLabelStyle.Render("Pod name: " + pod.name)
+		b.WriteString(configInfoStyle.
+			Render("\n------------------" + podLabel + "--------------------------"))
+		b.WriteString(configInfoStyle.
+			Render("\nScenario file :" + pod.scenarioFilePath))
+		b.WriteString(configInfoStyle.
+			Render("\nProperties file: " + pod.propsFilePath))
 
 		b.WriteString("\n--------------------------PROPS-----------------------------")
-		for i, l := range readFile(pod.propsFilePath) {
-			ln := strconv.Itoa(i)
-			b.WriteString(configuredStyle.Render("\n  |" + ln + ". " + l))
+		for _, l := range readFile(pod.propsFilePath) {
+			l = strings.TrimSpace(l)
+			b.WriteString(propsStyle.Render("\n" + l))
 		}
-		b.WriteString("\n////////////////////////////////////////////////////////////")
 	}
 
 	return b.String()

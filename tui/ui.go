@@ -35,16 +35,16 @@ var (
 			Foreground(lipgloss.Color("#FFFDF5"))
 	accentInfo = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#4287f5"))
+	podLabelStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#ffffff")).
+			Background(lipgloss.Color("#44ab30")).
+			PaddingLeft(1).
+			PaddingRight(1)
 	divider = lipgloss.NewStyle().
 		SetString("•").
 		Padding(0, 1).
 		Foreground(lipgloss.Color("#383838")).
 		String()
-	logsStyle = lipgloss.NewStyle().
-			BorderStyle(lipgloss.NormalBorder()).
-			BorderTop(true).
-			BorderBottom(true).
-			BorderForeground(lipgloss.Color("#FFFFFF"))
 )
 
 const (
@@ -66,11 +66,11 @@ type PodInfo struct {
 }
 
 type MainModel struct {
-	focusIndex        int
-	currentView       int
-	currentPod        int
-	pods              []PodInfo
-	cursorMode        cursor.Mode
+	focusIndex  int
+	currentView int
+	currentPod  int
+	pods        []PodInfo
+	cursorMode  cursor.Mode
 
 	paginator         paginator.Model
 	inputs            []textinput.Model
