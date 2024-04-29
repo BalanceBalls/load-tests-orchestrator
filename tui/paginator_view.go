@@ -74,7 +74,7 @@ func (m *MainModel) handlePaginatorUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m *MainModel) initPaginator(totalPages int) {
+func (m *MainModel) initPaginatorView(totalPages int) {
 	m.pods = make([]PodInfo, totalPages)
 
 	p := paginator.New()

@@ -13,11 +13,11 @@ import (
 )
 
 var (
-	focusedStyle        = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
-	blurredStyle        = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
-	cursorStyle         = focusedStyle.Copy()
-	noStyle             = lipgloss.NewStyle()
-	helpStyle           = blurredStyle.Copy()
+	focusedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
+	blurredStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
+	cursorStyle  = focusedStyle.Copy()
+	noStyle      = lipgloss.NewStyle()
+	helpStyle    = blurredStyle.Copy()
 
 	focusedButton = focusedStyle.Copy().Render("[ Submit ]")
 	blurredButton = fmt.Sprintf("[ %s ]", blurredStyle.Render("Submit"))
@@ -76,6 +76,7 @@ type MainModel struct {
 	filepicker        FilePickerModule
 	setupConfirmation ConfirmationModel
 	preparation       *PreparePodsModel
+	run               *TestRunModel
 	err               error
 }
 
@@ -90,7 +91,7 @@ func initialModel() *MainModel {
 		currentView: Config}
 
 	m.initConfigForm()
-	m.initPaginator(0)
+	m.initPaginatorView(0)
 
 	return &m
 }
@@ -123,6 +124,8 @@ func (m *MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleConfirmationUpdate(msg)
 	case PreparePods:
 		return m.handlePodsPreparationUpdate(msg)
+	case Run:
+		return m.handleRunUpdate(msg)
 	default:
 		return m, nil
 	}
@@ -140,6 +143,8 @@ func (m *MainModel) View() string {
 		return m.handleConfirmationView()
 	case PreparePods:
 		return m.handlePodsPreparationView()
+	case Run:
+		return m.handleRunView()
 	default:
 		return ""
 	}

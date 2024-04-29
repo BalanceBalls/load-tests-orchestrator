@@ -84,7 +84,7 @@ func (m *MainModel) handleConfigFormUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
 					panic(err)
 				}
 
-				m.initPaginator(totalPages)
+				m.initPaginatorView(totalPages)
 				m.currentView = PodsSetup
 
 				return m, m.Init()
@@ -128,9 +128,6 @@ func (m *MainModel) handleConfigFormUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *MainModel) updateInputs(msg tea.Msg) tea.Cmd {
 	cmds := make([]tea.Cmd, len(m.inputs))
-
-	// Only text inputs with Focus() set will respond, so it's safe to simply
-	// update all of them here without any further logic.
 	for i := range m.inputs {
 		m.inputs[i], cmds[i] = m.inputs[i].Update(msg)
 	}

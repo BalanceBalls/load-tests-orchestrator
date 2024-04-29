@@ -81,6 +81,11 @@ func (m *MainModel) handlePodsPreparationUpdate(msg tea.Msg) (tea.Model, tea.Cmd
 		var cmd tea.Cmd
 		m.preparation.spinner, cmd = m.preparation.spinner.Update(msg)
 		return m, cmd
+	default:
+		if m.preparation.quitting == true {
+			m.run = m.InitRunView()
+			m.currentView = Run
+		}
 	}
 
 	return m, nil

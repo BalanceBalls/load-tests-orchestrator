@@ -33,10 +33,9 @@ var (
 				Underline(true)
 
 	propsStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#3268a8")).
-		Italic(true).
-		MarginLeft(1)
-		
+			Foreground(lipgloss.Color("#3268a8")).
+			Italic(true).
+			MarginLeft(1)
 
 	subtle = lipgloss.AdaptiveColor{Light: "#D9DCCF", Dark: "#383838"}
 
@@ -92,11 +91,16 @@ func (m *MainModel) handleConfirmationUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, viewport.Sync(m.setupConfirmation.viewport))
 	}
 
-	cf, fCmd := m.setupConfirmation.confirmationForm.Update(msg)
-	if f, ok := cf.(*huh.Form); ok {
-		m.setupConfirmation.confirmationForm = *f
-		if f.GetBool("conf") {
-			m.setupConfirmation.isConfirmed = true
+	var fCmd tea.Cmd
+	viewPortPosition := int(m.setupConfirmation.viewport.ScrollPercent() * 100)
+	if viewPortPosition > 98 {
+		var cf tea.Model
+		cf, fCmd = m.setupConfirmation.confirmationForm.Update(msg)
+		if f, ok := cf.(*huh.Form); ok {
+			m.setupConfirmation.confirmationForm = *f
+			if f.GetBool("conf") {
+				m.setupConfirmation.isConfirmed = true
+			}
 		}
 	}
 
