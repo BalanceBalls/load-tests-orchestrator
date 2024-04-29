@@ -36,7 +36,7 @@ type TestRunModel struct {
 
 	currentPod int
 	podViews   []*viewport.Model
-	pages      *paginator.Model
+	pages      paginator.Model
 }
 
 var baseStyle = lipgloss.NewStyle().
@@ -58,10 +58,10 @@ func (m *MainModel) handleRunView() string {
 	start, end := m.run.pages.GetSliceBounds(len(m.run.pods))
 	for _, item := range m.run.pods[start:end] {
 		b.WriteString("\nPod: " + podLabelStyle.Render(item.name))
-		b.WriteString("\n" + m.paginator.View())
+		b.WriteString("\n" + m.run.pages.View())
 
-		b.WriteString(helpStyle.Render("\n\ns: pick scenario file • p: pick properties file"))
-		b.WriteString(helpStyle.Render("\nc: continue with current config"))
+		b.WriteString(helpStyle.Render("\n\nctrl+s: start run • ctrl+k: cancel ongoing run "))
+		b.WriteString(helpStyle.Render("\nctrl+r: reset run to initial state (stop current run and clear files)"))
 		b.WriteString(helpStyle.Render("\nh/l ←/→ page • ctrl+c: quit"))
 	}
 
@@ -79,13 +79,17 @@ func (m *MainModel) handleRunUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+k":
 			m.run.cancelRun()
 			return m, nil
+		case "ctrl+r":
+			m.run.resetRun()
+			return m, nil
 		case "v":
 			m.run.isTableView = !m.run.isTableView
+			return m, nil
 		}
 	}
 
 	updatedPaginator, cmdP := m.run.pages.Update(msg)
-	m.run.pages = &updatedPaginator
+	m.run.pages = updatedPaginator
 	return m, cmdP
 }
 
@@ -98,7 +102,7 @@ func (m *MainModel) InitRunView() *TestRunModel {
 	p.PerPage = 1
 	p.ActiveDot = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "235", Dark: "252"}).Bold(true).Render("[+]")
 	p.InactiveDot = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "250", Dark: "238"}).Render(" * ")
-	p.SetTotalPages(len(m.pods))
+	p.SetTotalPages(podCnt)
 
 	for i := range podCnt {
 		tPod := RunPodInfo{
@@ -121,25 +125,25 @@ func (m *MainModel) InitRunView() *TestRunModel {
 		pods:        testPods,
 		currentPod:  0,
 		podViews:    []*viewport.Model{},
-		pages:       &p,
+		pages:       p,
 		isTableView: true,
 	}
 }
 
 func (m *TestRunModel) startRun() {
 	m.runState = InProgress
-	for _, pod := range m.pods {
+	for i := range m.pods {
 
 		// Perform a command to start jmeter test
 		// Then either set state to InProgress or set an error
-		pod.runState = InProgress
+		m.pods[i].runState = InProgress
 	}
 }
 
 func (m *TestRunModel) checkIfRunComplete() {
-	for _, pod := range m.pods {
+	for i := range m.pods {
 		// Check if a pod is finished the run (just check if an archive is generated)
-		pod.runState = InProgress // Completed
+		m.pods[i].runState = InProgress // Completed
 	}
 
 	runInProgress := slices.ContainsFunc(m.pods, func(p RunPodInfo) bool {
@@ -154,18 +158,18 @@ func (m *TestRunModel) checkIfRunComplete() {
 }
 
 func (m *TestRunModel) cancelRun() {
-	for _, pod := range m.pods {
+	for i := range m.pods {
 		// Send command to cancel run
-		pod.runState = Cancelled
+		m.pods[i].runState = Cancelled
 	}
 
 	m.runState = Cancelled
 }
 
 func (m *TestRunModel) collectResults() {
-	for _, pod := range m.pods {
+	for i := range m.pods {
 		// Download results from Pod if any
-		pod.runState = Collected // Completed
+		m.pods[i].runState = Collected // Completed
 	}
 
 	resultCollectionInProgress := slices.ContainsFunc(m.pods, func(p RunPodInfo) bool {
@@ -177,6 +181,16 @@ func (m *TestRunModel) collectResults() {
 	}
 
 	m.runState = Collected
+}
+
+func (m *TestRunModel) resetRun() {
+	for i := range m.pods {
+		// Stop current run 
+		// Clear files
+		m.pods[i].runState = NotStarted
+	}
+
+	m.runState = NotStarted
 }
 
 func getState(state int) string {
