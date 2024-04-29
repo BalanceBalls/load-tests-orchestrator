@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/filepicker"
 	"github.com/charmbracelet/bubbles/paginator"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -65,18 +64,16 @@ type PodInfo struct {
 }
 
 type MainModel struct {
-	focusIndex  int
 	currentView int
 	currentPod  int
 	pods        []PodInfo
-	cursorMode  cursor.Mode
 
 	paginator         paginator.Model
-	inputs            []textinput.Model
 	filepicker        FilePickerModule
 	setupConfirmation ConfirmationModel
 	preparation       *PreparePodsModel
 	run               *TestRunModel
+	configForm        *ConfigViewModel
 	err               error
 }
 

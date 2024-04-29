@@ -94,7 +94,7 @@ func (m *MainModel) handleRunUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *MainModel) InitRunView() *TestRunModel {
-	podCnt, _ := strconv.Atoi(m.inputs[2].Value())
+	podCnt, _ := strconv.Atoi(m.configForm.inputs[2].Value())
 	var testPods []RunPodInfo
 
 	p := paginator.New()
@@ -121,7 +121,7 @@ func (m *MainModel) InitRunView() *TestRunModel {
 
 	return &TestRunModel{
 		runState:    NotStarted,
-		namespace:   m.inputs[1].Value(),
+		namespace:   m.configForm.inputs[1].Value(),
 		pods:        testPods,
 		currentPod:  0,
 		podViews:    []*viewport.Model{},

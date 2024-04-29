@@ -12,7 +12,7 @@ import (
 
 func (m *MainModel) handlePaginatorView() string {
 	var b strings.Builder
-	namespace := m.inputs[1].Value()
+	namespace := m.configForm.inputs[1].Value()
 
 	b.WriteString(focusedStyle.Render("\nPrepare pods"))
 	b.WriteString(configInfoStyle.Render("\nNamespace: " + namespace))
@@ -84,8 +84,8 @@ func (m *MainModel) initPaginatorView(totalPages int) {
 	p.InactiveDot = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "250", Dark: "238"}).Render(" * ")
 	p.SetTotalPages(totalPages)
 
-	podPrefix := m.inputs[0].Value()
-	podCount, _ := strconv.Atoi(m.inputs[2].Value())
+	podPrefix := m.configForm.inputs[0].Value()
+	podCount, _ := strconv.Atoi(m.configForm.inputs[2].Value())
 	for i := range podCount {
 		m.pods[i].name = fmt.Sprintf("%s-%d", podPrefix, i)
 		m.pods[i].id = i

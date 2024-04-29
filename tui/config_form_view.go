@@ -5,38 +5,71 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/charmbracelet/bubbles/cursor"
+	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
+
+type configDone struct {
+	connectionOk bool
+}
+type ConfigViewModel struct {
+	focusIndex            int
+	cursorMode            cursor.Mode
+	inputs                []textinput.Model
+	spinner               spinner.Model
+	showSpinner           bool
+	connectionEstablished bool
+	done                  configDone
+	err                   error
+}
 
 func (m MainModel) handleConfigFormView() string {
 	var b strings.Builder
 
-	b.WriteString(focusedStyle.Render("Set cluster config\n\n"))
+	b.WriteString(focusedStyle.Render("Set cluster config\n"))
 
-	for i := range m.inputs {
+	if m.configForm.err != nil {
+		b.WriteString("\nError: " + m.configForm.err.Error())
+	}
+
+	for i := range m.configForm.inputs {
 		if i == 0 {
 			b.WriteString("\n")
 		}
-		b.WriteString(m.inputs[i].View())
-		if i < len(m.inputs)-1 {
+		b.WriteString(m.configForm.inputs[i].View())
+		if i < len(m.configForm.inputs)-1 {
 			b.WriteRune('\n')
 		}
 	}
 
 	button := &blurredButton
-	if m.focusIndex == len(m.inputs) {
+	if m.configForm.focusIndex == len(m.configForm.inputs) {
 		button = &focusedButton
 	}
+
+	if m.configForm.showSpinner && !m.configForm.connectionEstablished {
+		b.WriteString("\n" + m.configForm.spinner.View())
+		b.WriteString(accentInfo.Render("Establising k8s cluster connection...\n"))
+	}
+
+	if m.configForm.connectionEstablished {
+		b.WriteString(accentInfo.Render("\nSuccessfully connected to k8s cluster"))
+	}
+
 	fmt.Fprintf(&b, "\n\n%s\n\n", *button)
 	return b.String()
 }
 
 func (m *MainModel) initConfigForm() {
-	m.inputs = make([]textinput.Model, 3)
+	m.configForm = &ConfigViewModel{}
+	m.configForm.inputs = make([]textinput.Model, 3)
 	var t textinput.Model
-	for i := range m.inputs {
+	for i := range m.configForm.inputs {
 		t = textinput.New()
 		t.Cursor.Style = cursorStyle
 		t.CharLimit = 32
@@ -53,84 +86,139 @@ func (m *MainModel) initConfigForm() {
 		case 2:
 			t.Placeholder = "Amount of pods"
 			t.Validate = func(input string) error {
-				if _, err := strconv.Atoi(input); err != nil {
-					return errors.New("Input must be a number")
+				numPod, err := strconv.Atoi(input)
+				if err != nil {
+					m.configForm.err = errors.New("Input must be a number")
+					return m.configForm.err
 				}
-				if len(input) > 2 {
-					return errors.New("Max amount exceeded")
+				if numPod < 1 {
+					m.configForm.err = errors.New("Need at least one pod")
+					return m.configForm.err
 				}
-				if len(input) < 1 {
-					return errors.New("Need at least one pod")
+				if numPod > 99 {
+					m.configForm.err = errors.New("Max amount exceeded")
+					return m.configForm.err
 				}
+
 				return nil
 			}
 		}
-		m.inputs[i] = t
+		m.configForm.inputs[i] = t
 	}
+
+	s := spinner.New()
+	s.Spinner = spinner.Dot
+	s.Spinner.FPS = 200 * time.Millisecond
+	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
+
+	m.configForm.spinner = s
+	m.configForm.connectionEstablished = false
+	m.configForm.showSpinner = false
 }
 
 func (m *MainModel) handleConfigFormUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmds []tea.Cmd
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		if m.configForm.showSpinner || m.configForm.connectionEstablished {
+			return m, nil
+		}
+
 		switch msg.String() {
 		// Set focus to next input
 		case "tab", "shift+tab", "enter", "up", "down":
 			s := msg.String()
 
 			// Did the user press enter while the submit button was focused?
-			if s == "enter" && m.focusIndex == len(m.inputs) {
-				totalPages, err := strconv.Atoi(m.inputs[2].Value())
-				if err != nil {
-					panic(err)
+			if s == "enter" && m.configForm.focusIndex == len(m.configForm.inputs) {
+				if m.configForm.inputs[0].Value() == "" ||
+					m.configForm.inputs[1].Value() == "" ||
+					m.configForm.inputs[2].Value() == "" {
+					m.configForm.err = errors.New("Incorrect configuration")
+					return m, nil
 				}
+				m.configForm.err = nil
+				m.configForm.showSpinner = true
 
-				m.initPaginatorView(totalPages)
-				m.currentView = PodsSetup
+				go func() {
+					ch := make(chan configDone)
+					defer close(ch)
 
-				return m, m.Init()
+					go m.configForm.checkClusterConnection(ch)
+
+					r := <-ch
+					m.Update(r)
+				}()
 			}
 
 			// Cycle indexes
 			if s == "up" || s == "shift+tab" {
-				m.focusIndex--
+				m.configForm.focusIndex--
 			} else {
-				m.focusIndex++
+				m.configForm.focusIndex++
 			}
 
-			if m.focusIndex > len(m.inputs) {
-				m.focusIndex = 0
-			} else if m.focusIndex < 0 {
-				m.focusIndex = len(m.inputs)
+			if m.configForm.focusIndex > len(m.configForm.inputs) {
+				m.configForm.focusIndex = 0
+			} else if m.configForm.focusIndex < 0 {
+				m.configForm.focusIndex = len(m.configForm.inputs)
 			}
 
-			cmds := make([]tea.Cmd, len(m.inputs))
-			for i := 0; i <= len(m.inputs)-1; i++ {
-				if i == m.focusIndex {
+			cmds := make([]tea.Cmd, len(m.configForm.inputs))
+			for i := 0; i <= len(m.configForm.inputs)-1; i++ {
+				if i == m.configForm.focusIndex {
 					// Set focused state
-					cmds[i] = m.inputs[i].Focus()
-					m.inputs[i].PromptStyle = focusedStyle
-					m.inputs[i].TextStyle = focusedStyle
+					cmds[i] = m.configForm.inputs[i].Focus()
+					m.configForm.inputs[i].PromptStyle = focusedStyle
+					m.configForm.inputs[i].TextStyle = focusedStyle
 					continue
 				}
 				// Remove focused state
-				m.inputs[i].Blur()
-				m.inputs[i].PromptStyle = noStyle
-				m.inputs[i].TextStyle = noStyle
+				m.configForm.inputs[i].Blur()
+				m.configForm.inputs[i].PromptStyle = noStyle
+				m.configForm.inputs[i].TextStyle = noStyle
 			}
 
 			return m, tea.Batch(cmds...)
 		}
+	case configDone:
+		totalPages, err := strconv.Atoi(m.configForm.inputs[2].Value())
+		if err != nil {
+			panic(err)
+		}
+
+		m.configForm.showSpinner = false
+		time.Sleep(1 * time.Second)
+		m.initPaginatorView(totalPages)
+		m.currentView = PodsSetup
+
+		return m, nil
 	}
 
+	var updSpinner spinner.Model
+	updSpinner, cmdS := m.configForm.spinner.Update(msg)
+	m.configForm.spinner = updSpinner
+	cmds = append(cmds, cmdS)
+
 	cmd := m.updateInputs(msg)
-	return m, cmd
+	cmds = append(cmds, cmd)
+	cmds = append(cmds, m.configForm.spinner.Tick)
+	return m, tea.Batch(cmds...)
 }
 
 func (m *MainModel) updateInputs(msg tea.Msg) tea.Cmd {
-	cmds := make([]tea.Cmd, len(m.inputs))
-	for i := range m.inputs {
-		m.inputs[i], cmds[i] = m.inputs[i].Update(msg)
+	cmds := make([]tea.Cmd, len(m.configForm.inputs))
+	for i := range m.configForm.inputs {
+		m.configForm.inputs[i], cmds[i] = m.configForm.inputs[i].Update(msg)
 	}
 
 	return tea.Batch(cmds...)
+}
+
+func (m *ConfigViewModel) checkClusterConnection(ch chan<- configDone) {
+	// Perform check
+	time.Sleep(2 * time.Second)
+
+	m.connectionEstablished = true
+	ch <- configDone{connectionOk: true}
 }
