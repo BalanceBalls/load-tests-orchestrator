@@ -31,7 +31,7 @@ func (cm *ConfiguratorModel) handleRunView() string {
 	if m.isTableView {
 		b.WriteString("\n" + m.table)
 	} else {
-		b.WriteString("\n" + m.podViews.View())
+		b.WriteString(podLogsStyle.Render("\n" + m.podViews.View()))
 	}
 
 	b.WriteString("\nCurrent run state: " + m.runState.String())
@@ -45,6 +45,7 @@ func (cm *ConfiguratorModel) handleRunView() string {
 
 	b.WriteString(helpStyle.Render("\n\nctrl+s: start run • ctrl+k: cancel ongoing run "))
 	b.WriteString(helpStyle.Render("\nctrl+r: reset run to initial state (stop current run and clear files)"))
+	b.WriteString(helpStyle.Render("\nd: scroll logs to bottom • v: switch between table and logs views"))
 	b.WriteString(helpStyle.Render("\nh/l ←/→ page • ctrl+c: quit"))
 	b.WriteString("\n\n")
 	return b.String()
@@ -66,9 +67,9 @@ func (cm *ConfiguratorModel) handleRunViewUpdate(msg tea.Msg) (tea.Model, tea.Cm
 		if msg.String() == "ctrl+c" {
 			return cm, tea.Quit
 		}
-		changesApplied := m.handleKeyUpdates(msg)
-		if changesApplied {
-			return cm, m.spinner.Tick
+		changeCmd := m.handleKeyUpdates(msg)
+		if changeCmd != nil {
+			return cm, changeCmd
 		}
 	case spinner.TickMsg:
 		m.spinner, spinnerCmd = m.spinner.Update(msg)
@@ -98,9 +99,9 @@ func (cm *ConfiguratorModel) handleRunViewUpdate(msg tea.Msg) (tea.Model, tea.Cm
 	return cm, tea.Batch(cmds...)
 }
 
-func (m *TestRunModel) handleKeyUpdates(msg tea.KeyMsg) bool {
+func (m *TestRunModel) handleKeyUpdates(msg tea.KeyMsg) tea.Cmd {
 	if m.showConfirm {
-		return false
+		return nil
 	}
 
 	switch msg.String() {
@@ -110,14 +111,14 @@ func (m *TestRunModel) handleKeyUpdates(msg tea.KeyMsg) bool {
 			m.confirm = huh.NewForm(huh.NewGroup(m.getConfirmationDialog()))
 			m.showConfirm = true
 		}
-		return true
+		return m.spinner.Tick
 	case "ctrl+k":
 		if m.runState == InProgress {
 			m.runState = CancelConfirm
 			m.confirm = huh.NewForm(huh.NewGroup(m.getConfirmationDialog()))
 			m.showConfirm = true
 		}
-		return true
+		return m.spinner.Tick
 	case "ctrl+r":
 		switch m.runState {
 		case InProgress, Cancelled, Collected:
@@ -127,13 +128,16 @@ func (m *TestRunModel) handleKeyUpdates(msg tea.KeyMsg) bool {
 			m.confirm = huh.NewForm(huh.NewGroup(m.getConfirmationDialog()))
 			m.showConfirm = true
 		}
-		return true
+		return m.spinner.Tick
 	case "v":
 		m.isTableView = !m.isTableView
-		return true
+		return m.spinner.Tick
+	case "d":
+		m.podViews.GotoBottom()
+		return m.spinner.Tick
 	}
 
-	return false
+	return nil
 }
 
 func (m *TestRunModel) Init() tea.Cmd {
@@ -172,7 +176,7 @@ func (m *ConfiguratorModel) InitRunView() *TestRunModel {
 		loadTestPods = append(loadTestPods, tPod)
 	}
 
-	vp := viewport.New(120, viewportHeight)
+	vp := viewport.New(200, viewportHeight)
 	vp.MouseWheelEnabled = true
 
 	runModel := &TestRunModel{
@@ -191,7 +195,8 @@ func (m *ConfiguratorModel) InitRunView() *TestRunModel {
 
 	runModel.table = getPodsTable(runModel.pods)
 	for i := range len(m.pods) {
-		runModel.pods[i].logs = "Run is not started. No logs yet for pod " + strconv.Itoa(i)
+		content := readFile("./jmeter.log")
+		runModel.pods[i].logs = strings.Join(content, "\n")
 	}
 
 	confirmationForm := huh.NewForm(huh.NewGroup(runModel.getConfirmationDialog()))

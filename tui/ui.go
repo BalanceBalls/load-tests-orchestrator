@@ -13,7 +13,6 @@ func loadTestConfiguratorModel() *ConfiguratorModel {
 		currentView: Config}
 
 	m.initConfigForm()
-	m.initPaginatorView(0)
 
 	return &m
 }

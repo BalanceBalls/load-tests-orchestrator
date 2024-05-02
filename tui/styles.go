@@ -30,8 +30,8 @@ var (
 	accentInfo = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#f54287"))
 	podLabelStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#ffffff")).
-			Background(lipgloss.Color("#378524")).
+			Foreground(lipgloss.Color("15")).
+			Background(lipgloss.Color("57")).
 			PaddingLeft(1).
 			PaddingRight(1)
 	divider = lipgloss.NewStyle().
@@ -41,10 +41,19 @@ var (
 		String()
 
 	// run view styles
-	tableBorderStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("99"))
+	tableBorderStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("12"))
 	notStartedStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("14"))
 	inProgressStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("11"))
 	completedStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("10"))
+	podLogsStyle     = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("10")).
+				Border(lipgloss.NormalBorder()).
+				BorderTop(true).
+				BorderBottom(true).
+				BorderRight(false).
+				BorderLeft(false).
+				TabWidth(2).
+				BorderForeground(lipgloss.Color("11"))
 
 	// prepare view styles
 	spinnerStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("63"))
@@ -76,7 +85,11 @@ var (
 				Underline(true)
 
 	propsStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#3268a8")).
-			Italic(true).
-			MarginLeft(1)
+			Foreground(lipgloss.Color("10")).
+			Border(lipgloss.NormalBorder()).
+			BorderForeground(lipgloss.Color("11")).
+			BorderLeft(false).
+			BorderRight(false).
+			MarginTop(1).
+			MarginBottom(1)
 )

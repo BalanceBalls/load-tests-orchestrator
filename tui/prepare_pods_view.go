@@ -78,30 +78,28 @@ func (m *ConfiguratorModel) handlePodsPreparationUpdate(msg tea.Msg) (tea.Model,
 }
 
 func (m *ConfiguratorModel) handlePodsPreparationView() string {
-	var s string
+	var b strings.Builder
 
 	if m.preparation.quitting {
-		s += "Pods are now ready to run load tests!"
+		b.WriteString("Pods are now ready to run load tests!")
 	} else {
-		s += m.preparation.spinner.View() + " Preparing pods..."
+		b.WriteString(m.preparation.spinner.View() + " Preparing pods...")
 	}
 
-	s += "\n\n"
-
+	b.WriteString("\n\n")
 	for _, res := range m.preparation.results {
-		s += res.String() + "\n"
+		b.WriteString(res.String() + "\n")
 	}
 
 	if !m.preparation.quitting {
-		s += helpStyle.Render("Press any key to exit")
+		b.WriteString(helpStyle.Render("Pods are being prepared..."))
 	}
 
 	if m.preparation.quitting {
-		s += "\n"
-		s += alertStyle.Render("Press 'c' to continue... ")
+		b.WriteString(alertStyle.Render("\nPress 'c' to continue... "))
 	}
 
-	return appStyle.Render(s)
+	return appStyle.Render(b.String())
 }
 
 func (m *PreparePodsModel) doStuff() {

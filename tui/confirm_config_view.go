@@ -74,9 +74,9 @@ func setupPods(m *ConfiguratorModel) {
 
 func (m ConfiguratorModel) handleConfirmationView() string {
 	var b strings.Builder
-	helpMsg := helpStyle.Render("\nj/k: down, up • ctrl+d/u: half page down, up") + 
+	helpMsg := helpStyle.Render("\nj/k: down, up • ctrl+d/u: half page down, up") +
 		helpStyle.Render("\nb: go back to configuration • ctrl+c: quit")
-	
+
 	conf := ""
 	viewPortPosition := int(m.setupConfirmation.viewport.ScrollPercent() * 100)
 
@@ -96,7 +96,7 @@ func (m ConfiguratorModel) handleConfirmationView() string {
 }
 
 func (m ConfiguratorModel) InitConfirmation() ConfirmationModel {
-	vp := viewport.New(70, viewportHeight)
+	vp := viewport.New(120, viewportHeight)
 	vp.MouseWheelEnabled = true
 	vp.SetContent(prepareRunInfo(m.pods))
 
@@ -119,18 +119,16 @@ func prepareRunInfo(pods []PodInfo) string {
 	b.WriteString(accentInfo.Render("\nThe test will run with the following configuration:\n"))
 	for _, pod := range pods {
 		podLabel := podLabelStyle.Render("Pod name: " + pod.name)
-		b.WriteString(configInfoStyle.
-			Render("\n------------------" + podLabel + "--------------------------"))
+		b.WriteString("\n" + podLabel + "\n")
 		b.WriteString(configInfoStyle.
 			Render("\nScenario file :" + pod.scenarioFilePath))
 		b.WriteString(configInfoStyle.
 			Render("\nProperties file: " + pod.propsFilePath))
 
-		b.WriteString("\n--------------------------PROPS-----------------------------")
-		for _, l := range readFile(pod.propsFilePath) {
-			l = strings.TrimSpace(l)
-			b.WriteString(propsStyle.Render("\n" + l))
-		}
+		propsFileRows := readFile(pod.propsFilePath)
+		propsFileContent := strings.Join(propsFileRows, "\n")
+		propsFileContent = strings.TrimSpace(propsFileContent)
+		b.WriteString(propsStyle.Render("\n" + propsFileContent))
 	}
 
 	return b.String()

@@ -32,7 +32,7 @@ func (m *ConfiguratorModel) handlePaginatorView() string {
 		b.WriteString(configInfoStyle.Render("\nProperties file: " + pf))
 
 		b.WriteString(configInfoStyle.Render("\nPod name" + divider))
-		b.WriteString(accentInfo.Render(item.name))
+		b.WriteString(podLabelStyle.Render(item.name))
 		b.WriteString("\n" + m.paginator.View())
 
 		b.WriteString(helpStyle.Render("\n\ns: pick scenario file • p: pick properties file"))
