@@ -1,9 +1,11 @@
 package tui
 
 import (
+	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/filepicker"
 	"github.com/charmbracelet/bubbles/paginator"
 	"github.com/charmbracelet/bubbles/spinner"
+	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	"github.com/charmbracelet/huh"
 )
@@ -14,6 +16,32 @@ type PodInfo struct {
 	logs             string
 	propsFilePath    string
 	scenarioFilePath string
+}
+
+type ConfigViewModel struct {
+	focusIndex            int
+	cursorMode            cursor.Mode
+	inputs                []textinput.Model
+	spinner               spinner.Model
+	showSpinner           bool
+	connectionEstablished bool
+	done                  configDone
+	err                   error
+}
+
+type PreparePodsModel struct {
+	pods     []PodInfo
+	spinner  spinner.Model
+	results  []stepDone
+	quitting bool
+}
+
+type ConfirmationModel struct {
+	isConfirmed      bool
+	content          string
+	ready            bool
+	viewport         viewport.Model
+	confirmationForm huh.Form
 }
 
 type ConfiguratorModel struct {

@@ -27,13 +27,6 @@ var (
 	podSetupActions = []string{"creating pod", "copying files", "setting up jmeter", "checking jmeter"}
 )
 
-type PreparePodsModel struct {
-	pods     []PodInfo
-	spinner  spinner.Model
-	results  []stepDone
-	quitting bool
-}
-
 func (sd stepDone) String() string {
 	if sd.duration == 0 {
 		return dotStyle.Render(strings.Repeat(".", 30))

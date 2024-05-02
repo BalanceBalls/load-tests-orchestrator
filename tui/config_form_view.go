@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -16,16 +15,6 @@ import (
 
 type configDone struct {
 	connectionOk bool
-}
-type ConfigViewModel struct {
-	focusIndex            int
-	cursorMode            cursor.Mode
-	inputs                []textinput.Model
-	spinner               spinner.Model
-	showSpinner           bool
-	connectionEstablished bool
-	done                  configDone
-	err                   error
 }
 
 func (m ConfiguratorModel) handleConfigFormView() string {

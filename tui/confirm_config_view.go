@@ -8,14 +8,6 @@ import (
 	"github.com/charmbracelet/huh"
 )
 
-type ConfirmationModel struct {
-	isConfirmed      bool
-	content          string
-	ready            bool
-	viewport         viewport.Model
-	confirmationForm huh.Form
-}
-
 func (m *ConfiguratorModel) handleConfirmationUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
