@@ -50,27 +50,28 @@ func (m *ConfiguratorModel) handlePaginatorUpdate(msg tea.Msg) (tea.Model, tea.C
 		switch msg.String() {
 		case "s":
 			m.currentView = FilePick
-			m.filepicker = FilePickerModule{
+			m.filepicker = &FilePickerModule{
 				model: GetFilePicker(),
 				mode:  0,
 			}
 			return m, m.filepicker.model.Init()
 		case "p":
 			m.currentView = FilePick
-			m.filepicker = FilePickerModule{
+			m.filepicker = &FilePickerModule{
 				model: GetFilePicker(),
 				mode:  1,
 			}
 			return m, m.filepicker.model.Init()
 		case "c":
-			m.setupConfirmation = m.InitConfirmation()
+			initiatedConfirm := m.InitConfirmation()
+			m.setupConfirmation = &initiatedConfirm
 			m.currentView = ReviewSetup
 			return m, nil
 		}
 	}
 
 	updatedPaginator, cmd := m.paginator.Update(msg)
-	m.paginator = updatedPaginator
+	m.paginator = &updatedPaginator
 	return m, cmd
 }
 
@@ -90,5 +91,5 @@ func (m *ConfiguratorModel) initPaginatorView(totalPages int) {
 		m.pods[i].name = fmt.Sprintf("%s-%d", podPrefix, i)
 		m.pods[i].id = i
 	}
-	m.paginator = p
+	m.paginator = &p
 }

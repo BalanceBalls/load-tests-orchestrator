@@ -69,9 +69,9 @@ type ConfiguratorModel struct {
 	currentPod  int
 	pods        []PodInfo
 
-	paginator         paginator.Model
-	filepicker        FilePickerModule
-	setupConfirmation ConfirmationModel
+	paginator         *paginator.Model
+	filepicker        *FilePickerModule
+	setupConfirmation *ConfirmationModel
 	preparation       *PreparePodsModel
 	configForm        *ConfigViewModel
 	err               error

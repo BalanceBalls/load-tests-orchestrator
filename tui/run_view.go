@@ -4,7 +4,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/charmbracelet/bubbles/paginator"
 	"github.com/charmbracelet/bubbles/spinner"
@@ -32,9 +31,10 @@ type TestRunModel struct {
 	pods         []RunPodInfo
 	isTableView  bool
 	currentPod   int
-	podViews     []viewport.Model
+	podViews     viewport.Model
 	pages        paginator.Model
-	confirm      huh.Form
+	confirm      *huh.Form
+	table        string
 	spinner      spinner.Model
 	showSpinner  bool
 	isConfirmed  bool
@@ -68,9 +68,9 @@ func (m *TestRunModel) View() string {
 	}
 
 	if m.isTableView {
-		b.WriteString("\n" + getPodsTable(m.pods).Render())
+		b.WriteString("\n" + m.table)
 	} else {
-		b.WriteString("\n" + m.podViews[m.currentPod].View())
+		b.WriteString("\n" + m.podViews.View())
 	}
 
 	b.WriteString("\nCurrent run state: " + getState(m.runState))
@@ -100,13 +100,16 @@ func (m *TestRunModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		if msg.String() == "ctrl+c"{
+		if msg.String() == "ctrl+c" {
 			return m, tea.Quit
 		}
 		changesApplied := m.handleKeyUpdates(msg)
 		if changesApplied {
 			return m, m.spinner.Tick
 		}
+	case spinner.TickMsg:
+		m.spinner, spinnerCmd = m.spinner.Update(msg)
+		cmds = append(cmds, spinnerCmd)
 	}
 
 	if m.showConfirm {
@@ -116,22 +119,17 @@ func (m *TestRunModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.handleConfirmationResult(confirmModel)
 		cmds = append(cmds, m.spinner.Tick)
 	} else {
-		for i := range len(m.pods) {
-			m.podViews[i], podViewCmd = m.podViews[i].Update(msg)
-			cmds = append(cmds, podViewCmd)
-		}
-
-		var updSpinner spinner.Model
-		updSpinner, spinnerCmd = m.spinner.Update(msg)
-		m.spinner = updSpinner
-		cmds = append(cmds, spinnerCmd)
-		cmds = append(cmds, m.spinner.Tick)
-
 		var updatedPaginator paginator.Model
 		updatedPaginator, pagesCmd = m.pages.Update(msg)
 		cmds = append(cmds, pagesCmd)
 		m.currentPod = updatedPaginator.Page
 		m.pages = updatedPaginator
+
+		if !m.isTableView {
+			m.podViews.SetContent(m.pods[m.currentPod].logs)
+			m.podViews, podViewCmd = m.podViews.Update(msg)
+			cmds = append(cmds, podViewCmd)
+		}
 	}
 
 	return m, tea.Batch(cmds...)
@@ -146,14 +144,14 @@ func (m *TestRunModel) handleKeyUpdates(msg tea.KeyMsg) bool {
 	case "ctrl+s":
 		if m.runState == NotStarted {
 			m.runState = StartConfirm
-			m.confirm = *huh.NewForm(huh.NewGroup(m.getConfirmationDialog()))
+			m.confirm = huh.NewForm(huh.NewGroup(m.getConfirmationDialog()))
 			m.showConfirm = true
 		}
 		return true
 	case "ctrl+k":
 		if m.runState == InProgress {
 			m.runState = CancelConfirm
-			m.confirm = *huh.NewForm(huh.NewGroup(m.getConfirmationDialog()))
+			m.confirm = huh.NewForm(huh.NewGroup(m.getConfirmationDialog()))
 			m.showConfirm = true
 		}
 		return true
@@ -163,7 +161,7 @@ func (m *TestRunModel) handleKeyUpdates(msg tea.KeyMsg) bool {
 			prev := m.runState
 			m.prevRunState = &prev
 			m.runState = ResetConfirm
-			m.confirm = *huh.NewForm(huh.NewGroup(m.getConfirmationDialog()))
+			m.confirm = huh.NewForm(huh.NewGroup(m.getConfirmationDialog()))
 			m.showConfirm = true
 		}
 		return true
@@ -180,8 +178,6 @@ func (m *TestRunModel) Init() tea.Cmd {
 }
 
 func (m *TestRunModel) InitRunView(cfg RunConfigData) {
-	var logsViewers []viewport.Model
-
 	p := paginator.New()
 	p.Type = paginator.Dots
 	p.PerPage = 1
@@ -192,27 +188,28 @@ func (m *TestRunModel) InitRunView(cfg RunConfigData) {
 
 	s := spinner.New()
 	s.Spinner = spinner.Meter
-	s.Spinner.FPS = 200 * time.Millisecond
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("155"))
 
 	confirmationForm := huh.NewForm(huh.NewGroup(m.getConfirmationDialog()))
 
-	for i := range cfg.podsAmount {
-		vp := viewport.New(120, viewportHeight)
-		vp.MouseWheelEnabled = true
-		vp.SetContent("Run is not started. No logs yet for pod " + strconv.Itoa(i))
-		logsViewers = append(logsViewers, vp)
-	}
+	vp := viewport.New(120, viewportHeight)
+	vp.MouseWheelEnabled = true
 
 	m.runState = NotStarted
 	m.namespace = cfg.namespace
 	m.pods = cfg.pods
 	m.currentPod = 0
-	m.podViews = logsViewers
+	m.podViews = vp
 	m.pages = p
 	m.isTableView = true
-	m.confirm = *confirmationForm
+	m.confirm = confirmationForm
 	m.spinner = s
+
+	m.table = getPodsTable(m.pods)
+
+	for i := range len(m.pods) {
+		m.pods[i].logs = "Run is not started. No logs yet for pod " + strconv.Itoa(i)
+	}
 }
 
 func (m *TestRunModel) startRun() {
@@ -224,6 +221,8 @@ func (m *TestRunModel) startRun() {
 		// Then either set state to InProgress or set an error
 		m.pods[i].runState = InProgress
 	}
+
+	m.table = getPodsTable(m.pods)
 }
 
 func (m *TestRunModel) checkIfRunComplete() {
@@ -240,6 +239,7 @@ func (m *TestRunModel) checkIfRunComplete() {
 		return
 	}
 
+	m.table = getPodsTable(m.pods)
 	m.runState = Completed
 	m.showSpinner = false
 }
@@ -249,6 +249,8 @@ func (m *TestRunModel) cancelRun() {
 		// Send command to cancel run
 		m.pods[i].runState = Cancelled
 	}
+
+	m.table = getPodsTable(m.pods)
 
 	m.runState = Cancelled
 	m.showSpinner = false
@@ -278,6 +280,7 @@ func (m *TestRunModel) resetRun() {
 		m.pods[i].runState = NotStarted
 	}
 
+	m.table = getPodsTable(m.pods)
 	m.runState = NotStarted
 	m.showSpinner = false
 }
@@ -316,7 +319,7 @@ func getTableRows(pods []RunPodInfo) [][]string {
 	return rows
 }
 
-func getPodsTable(pods []RunPodInfo) *table.Table {
+func getPodsTable(pods []RunPodInfo) string {
 	rows := getTableRows(pods)
 	t := table.New().
 		Border(lipgloss.ThickBorder()).
@@ -326,12 +329,12 @@ func getPodsTable(pods []RunPodInfo) *table.Table {
 		Width(100).
 		Rows(rows...)
 
-	return t
+	return t.Render()
 }
 
 func (m *TestRunModel) handleConfirmationResult(cf tea.Model) {
 	if f, ok := cf.(*huh.Form); ok {
-		m.confirm = *f
+		m.confirm = f
 
 		if m.confirm.State == huh.StateCompleted {
 			if f.GetBool("conf") {

@@ -181,6 +181,5 @@ func (m ConfiguratorModel) GetConfirmationDialog() *huh.Confirm {
 		Title(accentInfo.Render("Do you want to proceed with this config?")).
 		Affirmative("Yes").
 		Negative("No").
-		Key("conf").
-		Value(&m.setupConfirmation.isConfirmed)
+		Key("conf")
 }
