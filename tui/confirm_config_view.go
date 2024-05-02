@@ -36,20 +36,6 @@ var (
 			Foreground(lipgloss.Color("#3268a8")).
 			Italic(true).
 			MarginLeft(1)
-
-	subtle = lipgloss.AdaptiveColor{Light: "#D9DCCF", Dark: "#383838"}
-
-	titleStyle = func() lipgloss.Style {
-		b := lipgloss.RoundedBorder()
-		b.Right = "├"
-		return lipgloss.NewStyle().BorderStyle(b).Padding(0, 1)
-	}()
-
-	confirmationInfoStyle = func() lipgloss.Style {
-		b := lipgloss.RoundedBorder()
-		b.Left = "┤"
-		return titleStyle.Copy().BorderStyle(b)
-	}()
 )
 
 const useHighPerformanceRenderer = true
@@ -109,6 +95,7 @@ func (m *MainModel) handleConfirmationUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	return m, tea.Batch(cmds...)
 }
+
 func setupPods(m *MainModel) {
 	pf := m.InitPodsPreparation()
 	m.preparation = pf
