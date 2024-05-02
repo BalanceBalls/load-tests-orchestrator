@@ -3,10 +3,7 @@ package tui
 import (
 	"fmt"
 	"os"
-	"strconv"
 
-	"github.com/charmbracelet/bubbles/filepicker"
-	"github.com/charmbracelet/bubbles/paginator"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -46,70 +43,12 @@ var (
 		String()
 )
 
-const (
-	Config int = iota
-	FilePick
-	PodsSetup
-	ReviewSetup
-	PreparePods
-	Run
-	Finish
-)
-
-type PodInfo struct {
-	id               int
-	name             string
-	logs             string
-	propsFilePath    string
-	scenarioFilePath string
-}
-
-type ConfiguratorModel struct {
-	currentView int
-	currentPod  int
-	pods        []PodInfo
-
-	paginator         *paginator.Model
-	filepicker        *FilePickerModule
-	setupConfirmation *ConfirmationModel
-	preparation       *PreparePodsModel
-	configForm        *ConfigViewModel
-	err               error
-}
-
-type FilePickerModule struct {
-	model        filepicker.Model
-	selectedFile string
-	mode         int
-}
-
-type RunConfigData struct {
-	namespace  string
-	podsAmount int
-	pods       []RunPodInfo
-}
-
-type RunPodInfo struct {
-	PodInfo
-
-	runState   int
-	err        error
-	resultPath string
-}
-
 func loadTestConfiguratorModel() *ConfiguratorModel {
 	m := ConfiguratorModel{
 		currentView: Config}
 
 	m.initConfigForm()
 	m.initPaginatorView(0)
-
-	return &m
-}
-
-func loadTestExecutorModel(config RunConfigData) *TestRunModel {
-	m := TestRunModel{}
-	m.InitRunView(config)
 
 	return &m
 }
@@ -142,6 +81,8 @@ func (m *ConfiguratorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleConfirmationUpdate(msg)
 	case PreparePods:
 		return m.handlePodsPreparationUpdate(msg)
+	case Run:
+		return m.handleRunViewUpdate(msg)
 	default:
 		return m, nil
 	}
@@ -159,52 +100,23 @@ func (m *ConfiguratorModel) View() string {
 		return m.handleConfirmationView()
 	case PreparePods:
 		return m.handlePodsPreparationView()
+	case Run:
+		return m.handleRunView()
 	default:
 		return ""
 	}
 }
 
 func DisplayUI() {
-	configData, err := tea.NewProgram(
+	configurationProgram := tea.NewProgram(
 		loadTestConfiguratorModel(),
 		tea.WithAltScreen(),
-		tea.WithMouseCellMotion()).Run()
+		tea.WithMouseCellMotion())
+
+	_, err := configurationProgram.Run()
 
 	if err != nil {
 		fmt.Printf("could not start program: %s\n", err)
-		os.Exit(1)
-	}
-
-	data := configData.(*ConfiguratorModel)
-	podCnt, _ := strconv.Atoi(data.configForm.inputs[2].Value())
-
-	var loadTestPods []RunPodInfo
-	for i := range podCnt {
-		tPod := RunPodInfo{
-			PodInfo: PodInfo{
-				id:               data.pods[i].id,
-				name:             data.pods[i].name,
-				scenarioFilePath: data.pods[i].scenarioFilePath,
-				propsFilePath:    data.pods[i].propsFilePath,
-			},
-			runState:   NotStarted,
-			err:        nil,
-			resultPath: "",
-		}
-		loadTestPods = append(loadTestPods, tPod)
-	}
-	runConfigObject := RunConfigData{
-		namespace:  data.configForm.inputs[1].Value(),
-		podsAmount: podCnt,
-		pods:       loadTestPods,
-	}
-
-	_, err = tea.NewProgram(
-		loadTestExecutorModel(runConfigObject),
-		tea.WithAltScreen()).Run()
-
-	if err != nil {
-		fmt.Printf("could not start load test executor: %s\n", err)
 		os.Exit(1)
 	}
 }

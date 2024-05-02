@@ -83,7 +83,10 @@ func (m *ConfiguratorModel) handlePodsPreparationUpdate(msg tea.Msg) (tea.Model,
 		return m, cmd
 	default:
 		if m.preparation.quitting == true {
-			return m, tea.Quit
+			runView := m.InitRunView()
+			m.run = runView
+			m.currentView = Run
+			return m, m.run.spinner.Tick
 		}
 	}
 
