@@ -1,45 +1,12 @@
 package tui
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
-	"github.com/charmbracelet/lipgloss"
 )
-
-var (
-	dialogBoxStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("#874BFD")).
-			Padding(1, 0).
-			BorderTop(true).
-			BorderLeft(true).
-			BorderRight(true).
-			BorderBottom(true)
-
-	buttonStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#FFF7DB")).
-			Background(lipgloss.Color("#888B7E")).
-			Padding(0, 3).
-			MarginTop(1)
-
-	activeButtonStyle = buttonStyle.Copy().
-				Foreground(lipgloss.Color("#FFF7DB")).
-				Background(lipgloss.Color("#F25D94")).
-				MarginRight(2).
-				Underline(true)
-
-	propsStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#3268a8")).
-			Italic(true).
-			MarginLeft(1)
-)
-
-const useHighPerformanceRenderer = true
-const viewportHeight = 20
 
 type ConfirmationModel struct {
 	isConfirmed      bool
@@ -114,10 +81,10 @@ func setupPods(m *ConfiguratorModel) {
 }
 
 func (m ConfiguratorModel) handleConfirmationView() string {
-	helpMsg := fmt.Sprintf("%s\n%s\n",
-		helpStyle.Render("\nj/k: down, up • ctrl+d/u: half page down, up"),
-		helpStyle.Render("\nb: go back to configuration • ctrl+c: quit"),
-	)
+	var b strings.Builder
+	helpMsg := helpStyle.Render("\nj/k: down, up • ctrl+d/u: half page down, up") + 
+		helpStyle.Render("\nb: go back to configuration • ctrl+c: quit")
+	
 	conf := ""
 	viewPortPosition := int(m.setupConfirmation.viewport.ScrollPercent() * 100)
 
@@ -129,10 +96,11 @@ func (m ConfiguratorModel) handleConfirmationView() string {
 		conf += "\n" + alertStyle.Render("Configuration confirmed! Press 'c' to continue")
 	}
 
-	return fmt.Sprintf("%s\n%s\n%s\n",
-		m.setupConfirmation.viewport.View(),
-		conf,
-		helpMsg)
+	b.WriteString(m.setupConfirmation.viewport.View())
+	b.WriteString("\n" + conf)
+	b.WriteString("\n" + helpMsg)
+
+	return b.String()
 }
 
 func (m ConfiguratorModel) InitConfirmation() ConfirmationModel {

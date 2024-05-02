@@ -6,41 +6,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
-)
-
-var (
-	focusedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
-	blurredStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
-	cursorStyle  = focusedStyle.Copy()
-	noStyle      = lipgloss.NewStyle()
-	helpStyle    = blurredStyle.Copy()
-
-	focusedButton = focusedStyle.Copy().Render("[ Submit ]")
-	blurredButton = fmt.Sprintf("[ %s ]", blurredStyle.Render("Submit"))
-	alertStyle    = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#fc0313")).
-			Blink(true)
-	configuredStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#03fc52")).
-			Bold(true)
-
-	infoStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#383838"))
-	configInfoStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#FFFDF5"))
-	accentInfo = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#f54287"))
-	podLabelStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#ffffff")).
-			Background(lipgloss.Color("#378524")).
-			PaddingLeft(1).
-			PaddingRight(1)
-	divider = lipgloss.NewStyle().
-		SetString("•").
-		Padding(0, 1).
-		Foreground(lipgloss.Color("#383838")).
-		String()
 )
 
 func loadTestConfiguratorModel() *ConfiguratorModel {

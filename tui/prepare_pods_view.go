@@ -9,7 +9,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
 
 const (
@@ -26,14 +25,6 @@ type stepDone struct {
 
 var (
 	podSetupActions = []string{"creating pod", "copying files", "setting up jmeter", "checking jmeter"}
-)
-
-var (
-	spinnerStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("63"))
-	dotStyle      = helpStyle.Copy().UnsetMargins()
-	durationStyle = dotStyle.Copy()
-	appStyle      = lipgloss.NewStyle().Margin(1, 2, 0, 2)
-	stepNameStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#ebeb13"))
 )
 
 type PreparePodsModel struct {
