@@ -18,7 +18,7 @@ func clearErrorAfter(t time.Duration) tea.Cmd {
 	})
 }
 
-func (m *MainModel) handleFilepickerUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *ConfiguratorModel) handleFilepickerUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -61,7 +61,7 @@ func (m *MainModel) handleFilepickerUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m *MainModel) handleFilepickerView() string {
+func (m *ConfiguratorModel) handleFilepickerView() string {
 	var s strings.Builder
 
 	if m.filepicker.mode == 0 {

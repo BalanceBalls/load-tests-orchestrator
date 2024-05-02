@@ -49,7 +49,7 @@ type ConfirmationModel struct {
 	confirmationForm huh.Form
 }
 
-func (m *MainModel) handleConfirmationUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *ConfiguratorModel) handleConfirmationUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
@@ -96,7 +96,7 @@ func (m *MainModel) handleConfirmationUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func setupPods(m *MainModel) {
+func setupPods(m *ConfiguratorModel) {
 	pf := m.InitPodsPreparation()
 	m.preparation = pf
 	m.currentView = PreparePods
@@ -113,7 +113,7 @@ func setupPods(m *MainModel) {
 	}()
 }
 
-func (m MainModel) handleConfirmationView() string {
+func (m ConfiguratorModel) handleConfirmationView() string {
 	helpMsg := fmt.Sprintf("%s\n%s\n",
 		helpStyle.Render("\nj/k: down, up • ctrl+d/u: half page down, up"),
 		helpStyle.Render("\nb: go back to configuration • ctrl+c: quit"),
@@ -135,7 +135,7 @@ func (m MainModel) handleConfirmationView() string {
 		helpMsg)
 }
 
-func (m MainModel) InitConfirmation() ConfirmationModel {
+func (m ConfiguratorModel) InitConfirmation() ConfirmationModel {
 	vp := viewport.New(70, viewportHeight)
 	vp.MouseWheelEnabled = true
 	vp.SetContent(prepareRunInfo(m.pods))
@@ -176,7 +176,7 @@ func prepareRunInfo(pods []PodInfo) string {
 	return b.String()
 }
 
-func (m MainModel) GetConfirmationDialog() *huh.Confirm {
+func (m ConfiguratorModel) GetConfirmationDialog() *huh.Confirm {
 	return huh.NewConfirm().
 		Title(accentInfo.Render("Do you want to proceed with this config?")).
 		Affirmative("Yes").

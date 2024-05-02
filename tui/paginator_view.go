@@ -10,7 +10,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-func (m *MainModel) handlePaginatorView() string {
+func (m *ConfiguratorModel) handlePaginatorView() string {
 	var b strings.Builder
 	namespace := m.configForm.inputs[1].Value()
 
@@ -44,7 +44,7 @@ func (m *MainModel) handlePaginatorView() string {
 	return b.String()
 }
 
-func (m *MainModel) handlePaginatorUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *ConfiguratorModel) handlePaginatorUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -74,7 +74,7 @@ func (m *MainModel) handlePaginatorUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m *MainModel) initPaginatorView(totalPages int) {
+func (m *ConfiguratorModel) initPaginatorView(totalPages int) {
 	m.pods = make([]PodInfo, totalPages)
 
 	p := paginator.New()

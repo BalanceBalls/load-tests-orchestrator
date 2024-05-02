@@ -28,7 +28,7 @@ type ConfigViewModel struct {
 	err                   error
 }
 
-func (m MainModel) handleConfigFormView() string {
+func (m ConfiguratorModel) handleConfigFormView() string {
 	var b strings.Builder
 
 	b.WriteString(focusedStyle.Render("Set cluster config\n"))
@@ -65,7 +65,7 @@ func (m MainModel) handleConfigFormView() string {
 	return b.String()
 }
 
-func (m *MainModel) initConfigForm() {
+func (m *ConfiguratorModel) initConfigForm() {
 	m.configForm = &ConfigViewModel{}
 	m.configForm.inputs = make([]textinput.Model, 3)
 	var t textinput.Model
@@ -116,7 +116,7 @@ func (m *MainModel) initConfigForm() {
 	m.configForm.showSpinner = false
 }
 
-func (m *MainModel) handleConfigFormUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *ConfiguratorModel) handleConfigFormUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -206,7 +206,7 @@ func (m *MainModel) handleConfigFormUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m *MainModel) updateInputs(msg tea.Msg) tea.Cmd {
+func (m *ConfiguratorModel) updateInputs(msg tea.Msg) tea.Cmd {
 	cmds := make([]tea.Cmd, len(m.configForm.inputs))
 	for i := range m.configForm.inputs {
 		m.configForm.inputs[i], cmds[i] = m.configForm.inputs[i].Update(msg)
@@ -217,7 +217,7 @@ func (m *MainModel) updateInputs(msg tea.Msg) tea.Cmd {
 
 func (m *ConfigViewModel) checkClusterConnection(ch chan<- configDone) {
 	// Perform check
-	time.Sleep(2 * time.Second)
+	time.Sleep(1 * time.Second)
 
 	m.connectionEstablished = true
 	ch <- configDone{connectionOk: true}

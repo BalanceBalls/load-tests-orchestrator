@@ -53,7 +53,7 @@ func (sd stepDone) String() string {
 		durationStyle.Render(sd.duration.String()))
 }
 
-func (m *MainModel) InitPodsPreparation() *PreparePodsModel {
+func (m *ConfiguratorModel) InitPodsPreparation() *PreparePodsModel {
 	numLastResults := 10
 	s := spinner.New()
 	s.Style = spinnerStyle
@@ -67,7 +67,7 @@ func (m *MainModel) InitPodsPreparation() *PreparePodsModel {
 	return &pm
 }
 
-func (m *MainModel) handlePodsPreparationUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *ConfiguratorModel) handlePodsPreparationUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		if msg.String() == "ctrl+c" {
@@ -83,15 +83,14 @@ func (m *MainModel) handlePodsPreparationUpdate(msg tea.Msg) (tea.Model, tea.Cmd
 		return m, cmd
 	default:
 		if m.preparation.quitting == true {
-			m.run = m.InitRunView()
-			m.currentView = Run
+			return m, tea.Quit
 		}
 	}
 
 	return m, nil
 }
 
-func (m *MainModel) handlePodsPreparationView() string {
+func (m *ConfiguratorModel) handlePodsPreparationView() string {
 	var s string
 
 	if m.preparation.quitting {
