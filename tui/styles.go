@@ -92,4 +92,12 @@ var (
 			BorderRight(false).
 			MarginTop(1).
 			MarginBottom(1)
+
+	listItemStyle = lipgloss.NewStyle().
+		Margin(1).
+		Border(lipgloss.HiddenBorder()).
+		BorderRight(false).
+		BorderLeft(false).
+		BorderForeground(lipgloss.Color("11"))
+	
 )
