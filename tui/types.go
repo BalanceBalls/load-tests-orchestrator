@@ -1,6 +1,9 @@
 package tui
 
 import (
+	"context"
+	"log/slog"
+
 	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/filepicker"
 	"github.com/charmbracelet/bubbles/paginator"
@@ -34,6 +37,21 @@ type PreparePodsModel struct {
 	spinner  spinner.Model
 	results  []stepDone
 	quitting bool
+
+	logger *slog.Logger
+	ctx    context.Context
+	cancel context.CancelFunc
+}
+
+type PrepareResultsModel struct {
+	pods     []PodInfo
+	spinner  spinner.Model
+	results  []stepDone
+	quitting bool
+
+	logger *slog.Logger
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 type ConfirmationModel struct {
@@ -45,6 +63,8 @@ type ConfirmationModel struct {
 }
 
 type ConfiguratorModel struct {
+	ctx         context.Context
+	logger      *slog.Logger
 	currentView AppViewState
 	currentPod  int
 	pods        []PodInfo
@@ -54,6 +74,7 @@ type ConfiguratorModel struct {
 	setupConfirmation *ConfirmationModel
 	preparation       *PreparePodsModel
 	configForm        *ConfigViewModel
+	resultsCollection *PrepareResultsModel
 	run               *TestRunModel
 	err               error
 }
@@ -104,6 +125,7 @@ const (
 	ReviewSetup
 	PreparePods
 	Run
+	Collect
 	Finish
 )
 
@@ -117,5 +139,5 @@ const (
 	CancelConfirm
 	Cancelled
 	ResetConfirm
-	Collected
+	Done
 )

@@ -46,21 +46,21 @@ func (m *TestRunModel) cancelRun() {
 	m.showSpinner = false
 }
 
-func (m *TestRunModel) collectResults() {
+func (m *TestRunModel) finishRun() {
 	for i := range m.pods {
 		// Download results from Pod if any
-		m.pods[i].runState = Collected // Completed
+		m.pods[i].runState = Completed // Completed
 	}
 
-	resultCollectionInProgress := slices.ContainsFunc(m.pods, func(p RunPodInfo) bool {
-		return p.runState != Collected
+	runStillInProgress := slices.ContainsFunc(m.pods, func(p RunPodInfo) bool {
+		return p.runState != Completed
 	})
 
-	if resultCollectionInProgress {
+	if runStillInProgress {
 		return
 	}
 
-	m.runState = Collected
+	m.runState = Completed
 }
 
 func (m *TestRunModel) resetRun() {
@@ -73,4 +73,21 @@ func (m *TestRunModel) resetRun() {
 	m.table = getPodsTable(m.pods)
 	m.runState = NotStarted
 	m.showSpinner = false
+}
+
+func collectResults(m *ConfiguratorModel) {
+	rp := m.InitResultsPreparation()
+	m.resultsCollection = rp
+	m.currentView = Collect
+
+	go func() {
+		ch := make(chan stepDone)
+		defer close(ch)
+		go m.resultsCollection.saveResults(ch)
+
+		for r := range ch {
+			m.Update(r)
+			m.Update(m.resultsCollection.spinner.Tick)
+		}
+	}()
 }

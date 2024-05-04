@@ -1,18 +1,24 @@
 package tui
 
 import (
+	"context"
 	"fmt"
+	"log/slog"
 	"os"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-func loadTestConfiguratorModel() *ConfiguratorModel {
+func loadTestConfiguratorModel(appCtx context.Context, appLogger *slog.Logger) *ConfiguratorModel {
 	m := ConfiguratorModel{
+		ctx: appCtx,
+		logger: appLogger,
 		currentView: Config}
 
 	m.initConfigForm()
+
+	m.logger.Info("First form initiated")
 
 	return &m
 }
@@ -47,6 +53,8 @@ func (m *ConfiguratorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handlePodsPreparationUpdate(msg)
 	case Run:
 		return m.handleRunViewUpdate(msg)
+	case Collect:
+		return m.handleResultsPreparationUpdate(msg)
 	default:
 		return m, nil
 	}
@@ -66,14 +74,17 @@ func (m *ConfiguratorModel) View() string {
 		return m.handlePodsPreparationView()
 	case Run:
 		return m.handleRunView()
+	case Collect:
+		return m.handleResultsPreparationView()
 	default:
 		return ""
 	}
 }
 
-func DisplayUI() {
+func DisplayUI(ctx context.Context, logger *slog.Logger) {
+	logger.Info("Loading UI...")
 	configurationProgram := tea.NewProgram(
-		loadTestConfiguratorModel(),
+		loadTestConfiguratorModel(ctx, logger),
 		tea.WithAltScreen(),
 		tea.WithMouseCellMotion())
 

@@ -1,7 +1,20 @@
 package main
 
-import "terminalui/tui"
+import (
+	"context"
+	"log/slog"
+	"os"
+	"terminalui/tui"
+)
 
 func main() {
-	tui.DisplayUI()
+	ctx := context.Background()
+	logFileName := "./app.log"
+	logFile, fileErr := os.Create(logFileName)
+	if fileErr != nil {
+		panic(fileErr)
+	}
+
+	logger := slog.New(slog.NewTextHandler(logFile, &slog.HandlerOptions{}))
+	tui.DisplayUI(ctx, logger)
 }

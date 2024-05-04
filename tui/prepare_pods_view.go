@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"strings"
@@ -42,10 +43,15 @@ func (m *ConfiguratorModel) InitPodsPreparation() *PreparePodsModel {
 	s := spinner.New()
 	s.Style = spinnerStyle
 
+	prepareCtx, cancel := context.WithCancel(m.ctx)
+
 	pm := PreparePodsModel{
 		spinner: s,
 		results: make([]stepDone, numLastResults),
 		pods:    m.pods,
+		logger:  m.logger,
+		ctx:     prepareCtx,
+		cancel:  cancel,
 	}
 
 	return &pm
@@ -55,6 +61,7 @@ func (m *ConfiguratorModel) handlePodsPreparationUpdate(msg tea.Msg) (tea.Model,
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		if msg.String() == "ctrl+c" {
+			m.preparation.cancel()
 			return m, tea.Quit
 		}
 
@@ -103,7 +110,13 @@ func (m *ConfiguratorModel) handlePodsPreparationView() string {
 }
 
 func (m *PreparePodsModel) doStuff() {
-	time.Sleep(time.Duration(rand.Intn(800)) * time.Millisecond)
+	select {
+	case <-m.ctx.Done():
+		m.logger.Info("Stopped doing stuff")
+		return
+	default:
+		time.Sleep(time.Duration(rand.Intn(800)) * time.Millisecond)
+	}
 }
 
 func (m *PreparePodsModel) runPodPreparation(pod PodInfo, ch chan<- stepDone) {

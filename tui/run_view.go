@@ -3,6 +3,7 @@ package tui
 import (
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/paginator"
 	"github.com/charmbracelet/bubbles/spinner"
@@ -62,11 +63,21 @@ func (cm *ConfiguratorModel) handleRunViewUpdate(msg tea.Msg) (tea.Model, tea.Cm
 		cmds       []tea.Cmd
 	)
 
+	if m.runState == Completed {
+		collectResults(cm)
+		return cm, cm.resultsCollection.spinner.Tick
+	}
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		if msg.String() == "ctrl+c" {
 			return cm, tea.Quit
 		}
+		if msg.String() == "ctrl+q" {
+			m.finishRun()
+			return cm, tea.Tick(1 * time.Second, func(t time.Time) tea.Msg { return nil })
+		}
+
 		changeCmd := m.handleKeyUpdates(msg)
 		if changeCmd != nil {
 			return cm, changeCmd
@@ -121,7 +132,7 @@ func (m *TestRunModel) handleKeyUpdates(msg tea.KeyMsg) tea.Cmd {
 		return m.spinner.Tick
 	case "ctrl+r":
 		switch m.runState {
-		case InProgress, Cancelled, Collected:
+		case InProgress, Cancelled:
 			prev := m.runState
 			m.prevRunState = &prev
 			m.runState = ResetConfirm
@@ -214,8 +225,6 @@ func (state TestRunState) String() string {
 		stateStr = inProgressStyle.Render("run in progress")
 	case Completed:
 		stateStr = completedStyle.Render("run completed")
-	case Collected:
-		stateStr = completedStyle.Render("run results collected")
 	case Cancelled:
 		stateStr = accentInfo.Render("run is cancelled")
 	default:
