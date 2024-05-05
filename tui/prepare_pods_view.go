@@ -3,9 +3,9 @@ package tui
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"strings"
 	"sync"
+	"terminalui/kubeutils"
 	"time"
 
 	"github.com/charmbracelet/bubbles/spinner"
@@ -18,24 +18,15 @@ const (
 )
 
 type tickMsg time.Time
-type stepDone struct {
-	podName  string
-	name     string
-	duration time.Duration
-}
 
-var (
-	podSetupActions = []string{"creating pod", "copying files", "setting up jmeter", "checking jmeter"}
-)
-
-func (sd stepDone) String() string {
-	if sd.duration == 0 {
+func formatMsg(ad kubeutils.ActionDone) string {
+	if ad.Duration == 0 {
 		return dotStyle.Render(strings.Repeat(".", 30))
 	}
 	return fmt.Sprintf("* Pod: %s; Step: %s; Took: %s",
-		podLabelStyle.Render(sd.podName),
-		stepNameStyle.Render(sd.name),
-		durationStyle.Render(sd.duration.String()))
+		podLabelStyle.Render(ad.PodName),
+		stepNameStyle.Render(ad.Name),
+		durationStyle.Render(ad.Duration.String()))
 }
 
 func (m *ConfiguratorModel) InitPodsPreparation() *PreparePodsModel {
@@ -47,7 +38,7 @@ func (m *ConfiguratorModel) InitPodsPreparation() *PreparePodsModel {
 
 	pm := PreparePodsModel{
 		spinner: s,
-		results: make([]stepDone, numLastResults),
+		results: make([]kubeutils.ActionDone, numLastResults),
 		pods:    m.pods,
 		logger:  m.logger,
 		ctx:     prepareCtx,
@@ -65,7 +56,7 @@ func (m *ConfiguratorModel) handlePodsPreparationUpdate(msg tea.Msg) (tea.Model,
 			return m, tea.Quit
 		}
 
-	case stepDone:
+	case kubeutils.ActionDone:
 		m.preparation.results = append(m.preparation.results[1:], msg)
 		return m, nil
 	case spinner.TickMsg:
@@ -87,15 +78,19 @@ func (m *ConfiguratorModel) handlePodsPreparationUpdate(msg tea.Msg) (tea.Model,
 func (m *ConfiguratorModel) handlePodsPreparationView() string {
 	var b strings.Builder
 
-	if m.preparation.quitting {
+	if m.preparation.quitting && m.preparation.err == "" {
 		b.WriteString("Pods are now ready to run load tests!")
 	} else {
 		b.WriteString(m.preparation.spinner.View() + " Preparing pods...")
 	}
 
+	if m.preparation.err != "" {
+		b.WriteString(accentInfo.Render("\n" + m.preparation.err))
+	}
+
 	b.WriteString("\n\n")
 	for _, res := range m.preparation.results {
-		b.WriteString(res.String() + "\n")
+		b.WriteString(formatMsg(res) + "\n")
 	}
 
 	if !m.preparation.quitting {
@@ -109,37 +104,24 @@ func (m *ConfiguratorModel) handlePodsPreparationView() string {
 	return appStyle.Render(b.String())
 }
 
-func (m *PreparePodsModel) doStuff() {
-	select {
-	case <-m.ctx.Done():
-		m.logger.Info("Stopped doing stuff")
-		return
-	default:
-		time.Sleep(time.Duration(rand.Intn(800)) * time.Millisecond)
-	}
-}
-
-func (m *PreparePodsModel) runPodPreparation(pod PodInfo, ch chan<- stepDone) {
-	for _, step := range podSetupActions {
-		start := time.Now()
-		m.doStuff()
-		ch <- stepDone{
-			podName:  pod.name,
-			name:     step,
-			duration: time.Since(start),
-		}
-	}
-}
-
-func (pm *PreparePodsModel) beginSetup(ch chan<- stepDone) {
+func (m *ConfiguratorModel) beginSetup(ch chan<- kubeutils.ActionDone) {
 	var wg sync.WaitGroup
-	for _, pod := range pm.pods {
+	for _, pod := range m.preparation.pods {
 		wg.Add(1)
 		go func(p PodInfo) {
 			defer wg.Done()
-			pm.runPodPreparation(p, ch)
+			testInfo := kubeutils.TestInfo{
+				PodName:          p.name,
+				PropFileName:     p.propsFilePath,
+				ScenarioFileName: p.scenarioFilePath,
+			}
+			err := m.cluster.PreparePod(m.preparation.ctx, testInfo, ch)
+			if err != nil {
+				m.preparation.err = err.Error()	
+				return
+			}
 		}(pod)
 	}
 	wg.Wait()
-	pm.quitting = true
+	m.preparation.quitting = true
 }

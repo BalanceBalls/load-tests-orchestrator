@@ -1,6 +1,9 @@
 package tui
 
-import "slices"
+import (
+	"slices"
+	"terminalui/kubeutils"
+)
 
 func (m *TestRunModel) startRun() {
 	m.runState = InProgress
@@ -81,7 +84,7 @@ func collectResults(m *ConfiguratorModel) {
 	m.currentView = Collect
 
 	go func() {
-		ch := make(chan stepDone)
+		ch := make(chan kubeutils.ActionDone)
 		defer close(ch)
 		go m.resultsCollection.saveResults(ch)
 

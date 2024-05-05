@@ -2,6 +2,7 @@ package tui
 
 import (
 	"strings"
+	"terminalui/kubeutils"
 
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -61,9 +62,9 @@ func setupPods(m *ConfiguratorModel) {
 	m.currentView = PreparePods
 
 	go func() {
-		ch := make(chan stepDone)
+		ch := make(chan kubeutils.ActionDone)
 		defer close(ch)
-		go m.preparation.beginSetup(ch)
+		go m.beginSetup(ch)
 
 		for r := range ch {
 			m.Update(r)

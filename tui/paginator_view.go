@@ -86,7 +86,7 @@ func (m *ConfiguratorModel) initPaginatorView(totalPages int) {
 	p.SetTotalPages(totalPages)
 
 	podPrefix := m.configForm.inputs[0].Value()
-	podCount, _ := strconv.Atoi(m.configForm.inputs[2].Value())
+	podCount, _ := strconv.Atoi(m.configForm.inputs[3].Value())
 	for i := range podCount {
 		m.pods[i].name = fmt.Sprintf("%s-%d", podPrefix, i)
 		m.pods[i].id = i

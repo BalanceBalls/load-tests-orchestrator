@@ -156,7 +156,7 @@ func (m *TestRunModel) Init() tea.Cmd {
 }
 
 func (m *ConfiguratorModel) InitRunView() *TestRunModel {
-	podsAmount, _ := strconv.Atoi(m.configForm.inputs[2].Value())
+	podsAmount, _ := strconv.Atoi(m.configForm.inputs[3].Value())
 	namespace := m.configForm.inputs[1].Value()
 
 	p := paginator.New()

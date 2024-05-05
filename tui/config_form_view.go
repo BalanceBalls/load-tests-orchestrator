@@ -1,16 +1,22 @@
 package tui
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"log/slog"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
+	"terminalui/kubeutils"
 	"time"
 
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"k8s.io/client-go/kubernetes"
 )
 
 type configDone struct {
@@ -56,7 +62,7 @@ func (m ConfiguratorModel) handleConfigFormView() string {
 
 func (m *ConfiguratorModel) initConfigForm() {
 	m.configForm = &ConfigViewModel{}
-	m.configForm.inputs = make([]textinput.Model, 3)
+	m.configForm.inputs = make([]textinput.Model, 4)
 	var t textinput.Model
 	for i := range m.configForm.inputs {
 		t = textinput.New()
@@ -73,6 +79,9 @@ func (m *ConfiguratorModel) initConfigForm() {
 			t.Placeholder = "Namespace"
 			t.CharLimit = 64
 		case 2:
+			t.Placeholder = "K8s context"
+			t.CharLimit = 128
+		case 3:
 			t.Placeholder = "Amount of pods"
 			t.Validate = func(input string) error {
 				numPod, err := strconv.Atoi(input)
@@ -105,6 +114,32 @@ func (m *ConfiguratorModel) initConfigForm() {
 	m.configForm.showSpinner = false
 }
 
+func (m *ConfiguratorModel) getClusterConfig(kubeCtx string) (*kubeutils.Cluster, error) {
+	homeDir, _ := os.UserHomeDir()
+	defaultPath := filepath.Join(homeDir, ".kube", "config")
+
+	config, err := kubeutils.BuildConfigWithContextFromFlags(kubeCtx, defaultPath)
+	if err != nil {
+		m.logger.Error("Error creating Kubernetes client configuration: ", slog.Any("err", err))
+		return nil, err
+	}
+
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		m.logger.Error("Error creating Kubernetes client: ", slog.Any("err", err))
+		return nil, err
+	}
+
+	cluster := kubeutils.Cluster{
+		RestCfg:     config,
+		Clientset:   clientset,
+		Namespace:   m.configForm.inputs[1].Value(),
+		KubeCtxName: m.configForm.inputs[2].Value(),
+		Logger:      *m.logger,
+	}
+	return &cluster, nil
+}
+
 func (m *ConfiguratorModel) handleConfigFormUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 	switch msg := msg.(type) {
@@ -122,18 +157,30 @@ func (m *ConfiguratorModel) handleConfigFormUpdate(msg tea.Msg) (tea.Model, tea.
 			if s == "enter" && m.configForm.focusIndex == len(m.configForm.inputs) {
 				if m.configForm.inputs[0].Value() == "" ||
 					m.configForm.inputs[1].Value() == "" ||
-					m.configForm.inputs[2].Value() == "" {
+					m.configForm.inputs[2].Value() == "" ||
+					m.configForm.inputs[3].Value() == "" {
 					m.configForm.err = errors.New("Incorrect configuration")
 					return m, nil
 				}
 				m.configForm.err = nil
 				m.configForm.showSpinner = true
 
+				cfg, err := m.getClusterConfig(m.configForm.inputs[2].Value())
+				if err != nil {
+					m.configForm.err = err
+					m.configForm.showSpinner = false
+					m.configForm.connectionEstablished = false
+
+					return m, m.configForm.spinner.Tick
+				}
+
+				m.cluster = cfg
+
 				go func() {
 					ch := make(chan configDone)
 					defer close(ch)
 
-					go m.configForm.checkClusterConnection(ch)
+					go m.checkClusterConnection(ch)
 
 					r := <-ch
 					m.Update(r)
@@ -171,7 +218,7 @@ func (m *ConfiguratorModel) handleConfigFormUpdate(msg tea.Msg) (tea.Model, tea.
 			return m, tea.Batch(cmds...)
 		}
 	case configDone:
-		totalPages, err := strconv.Atoi(m.configForm.inputs[2].Value())
+		totalPages, err := strconv.Atoi(m.configForm.inputs[3].Value())
 		if err != nil {
 			panic(err)
 		}
@@ -204,10 +251,13 @@ func (m *ConfiguratorModel) updateInputs(msg tea.Msg) tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
-func (m *ConfigViewModel) checkClusterConnection(ch chan<- configDone) {
+func (m *ConfiguratorModel) checkClusterConnection(ch chan<- configDone) {
 	// Perform check
-	time.Sleep(1 * time.Second)
+	isConnected, err := m.cluster.Ping(context.TODO())
+	if err != nil {
+		m.configForm.err = err
+	}
 
-	m.connectionEstablished = true
-	ch <- configDone{connectionOk: true}
+	m.configForm.connectionEstablished = isConnected
+	ch <- configDone{connectionOk: isConnected}
 }

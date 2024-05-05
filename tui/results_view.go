@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"strings"
 	"sync"
+	"terminalui/kubeutils"
 	"time"
 
 	"github.com/charmbracelet/bubbles/spinner"
@@ -22,7 +23,7 @@ func (m *ConfiguratorModel) InitResultsPreparation() *PrepareResultsModel {
 
 	pm := PrepareResultsModel{
 		spinner: s,
-		results: make([]stepDone, numLastResults),
+		results: make([]kubeutils.ActionDone, numLastResults),
 		pods:    m.pods,
 		logger:  m.logger,
 		ctx:     prepareCtx,
@@ -40,7 +41,7 @@ func (m *ConfiguratorModel) handleResultsPreparationUpdate(msg tea.Msg) (tea.Mod
 			return m, tea.Quit
 		}
 
-	case stepDone:
+	case kubeutils.ActionDone:
 		m.resultsCollection.results = append(m.resultsCollection.results[1:], msg)
 		return m, nil
 	case spinner.TickMsg:
@@ -68,7 +69,7 @@ func (m *ConfiguratorModel) handleResultsPreparationView() string {
 
 	b.WriteString("\n\n")
 	for _, res := range m.resultsCollection.results {
-		b.WriteString(res.String() + "\n")
+		b.WriteString(formatMsg(res) + "\n")
 	}
 
 	if !m.resultsCollection.quitting {
@@ -92,19 +93,19 @@ func (m *PrepareResultsModel) executeStep() {
 	}
 }
 
-func (m *PrepareResultsModel) runPodPreparation(pod PodInfo, ch chan<- stepDone) {
+func (m *PrepareResultsModel) runPodPreparation(pod PodInfo, ch chan<- kubeutils.ActionDone) {
 	for _, step := range resultCollectionActions {
 		start := time.Now()
 		m.executeStep()
-		ch <- stepDone{
-			podName:  pod.name,
-			name:     step,
-			duration: time.Since(start),
+		ch <- kubeutils.ActionDone{
+			PodName:  pod.name,
+			Name:     step,
+			Duration: time.Since(start),
 		}
 	}
 }
 
-func (pm *PrepareResultsModel) saveResults(ch chan<- stepDone) {
+func (pm *PrepareResultsModel) saveResults(ch chan<- kubeutils.ActionDone) {
 	var wg sync.WaitGroup
 	for _, pod := range pm.pods {
 		wg.Add(1)

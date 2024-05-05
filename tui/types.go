@@ -3,6 +3,7 @@ package tui
 import (
 	"context"
 	"log/slog"
+	"terminalui/kubeutils"
 
 	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/filepicker"
@@ -35,8 +36,9 @@ type ConfigViewModel struct {
 type PreparePodsModel struct {
 	pods     []PodInfo
 	spinner  spinner.Model
-	results  []stepDone
+	results  []kubeutils.ActionDone
 	quitting bool
+	err      string
 
 	logger *slog.Logger
 	ctx    context.Context
@@ -46,7 +48,7 @@ type PreparePodsModel struct {
 type PrepareResultsModel struct {
 	pods     []PodInfo
 	spinner  spinner.Model
-	results  []stepDone
+	results  []kubeutils.ActionDone
 	quitting bool
 
 	logger *slog.Logger
@@ -69,6 +71,7 @@ type ConfiguratorModel struct {
 	currentPod  int
 	pods        []PodInfo
 
+	cluster           *kubeutils.Cluster
 	paginator         *paginator.Model
 	filepicker        *FilePickerModule
 	setupConfirmation *ConfirmationModel
