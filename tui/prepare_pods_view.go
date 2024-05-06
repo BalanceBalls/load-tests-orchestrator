@@ -14,7 +14,7 @@ import (
 
 const (
 	padding  = 2
-	maxWidth = 80
+	maxWidth = 100
 )
 
 type tickMsg time.Time
@@ -33,6 +33,7 @@ func (m *ConfiguratorModel) InitPodsPreparation() *PreparePodsModel {
 	numLastResults := 10
 	s := spinner.New()
 	s.Style = spinnerStyle
+	s.Style.Height(10)
 
 	prepareCtx, cancel := context.WithCancel(m.ctx)
 
@@ -81,14 +82,12 @@ func (m *ConfiguratorModel) handlePodsPreparationView() string {
 	if m.preparation.quitting && m.preparation.err == "" {
 		b.WriteString("Pods are now ready to run load tests!")
 	} else {
+		if m.preparation.err != "" {
+			b.WriteString(accentInfo.Render("\n" + m.preparation.err))
+		}
 		b.WriteString(m.preparation.spinner.View() + " Preparing pods...")
 	}
 
-	if m.preparation.err != "" {
-		b.WriteString(accentInfo.Render("\n" + m.preparation.err))
-	}
-
-	b.WriteString("\n\n")
 	for _, res := range m.preparation.results {
 		b.WriteString(formatMsg(res) + "\n")
 	}
@@ -117,7 +116,7 @@ func (m *ConfiguratorModel) beginSetup(ch chan<- kubeutils.ActionDone) {
 			}
 			err := m.cluster.PreparePod(m.preparation.ctx, testInfo, ch)
 			if err != nil {
-				m.preparation.err = err.Error()	
+				m.preparation.err = err.Error()
 				return
 			}
 		}(pod)

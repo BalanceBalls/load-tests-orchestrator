@@ -5,17 +5,24 @@ import (
 	"terminalui/kubeutils"
 )
 
-func (m *TestRunModel) startRun() {
-	m.runState = InProgress
-	m.showSpinner = true
-	for i := range m.pods {
+func (m *ConfiguratorModel) startRun() {
+	m.run.runState = InProgress
+	m.run.showSpinner = true
+	for i, pod := range m.run.pods {
 
-		// Perform a command to start jmeter test
-		// Then either set state to InProgress or set an error
-		m.pods[i].runState = InProgress
+		testInfo := kubeutils.TestInfo{
+			PodName:          pod.name,
+			PropFileName:     pod.propsFilePath,
+			ScenarioFileName: pod.scenarioFilePath,
+		}
+		err := m.cluster.KickstartTestForPod(m.ctx, testInfo)	
+		if err != nil {
+			// Display err
+		}
+		m.run.pods[i].runState = InProgress
 	}
 
-	m.table = getPodsTable(m.pods)
+	m.run.table = getPodsTable(m.run.pods)
 }
 
 func (m *TestRunModel) checkIfRunComplete() {

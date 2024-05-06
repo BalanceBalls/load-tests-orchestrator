@@ -84,9 +84,16 @@ func (m *ConfiguratorModel) handleFilepickerView() string {
 	return s.String()
 }
 
-func GetFilePicker() filepicker.Model {
+func GetFilePicker(isJmx bool) filepicker.Model {
+	var extension string
+	if isJmx {
+		extension = ".jmx"
+	} else {
+		extension = ".properties"
+	}
 	fp := filepicker.New()
-	fp.AllowedTypes = []string{".mod", ".sum", ".go", ".txt", ".md", ".log", ".jmx", ".properties"}
+
+	fp.AllowedTypes = []string{ extension }
 	fp.CurrentDirectory, _ = os.Getwd()
 	fp.AutoHeight = false
 	fp.Height = 15

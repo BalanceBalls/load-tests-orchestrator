@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -42,8 +43,8 @@ func (c *Cluster) PreparePod(ctx context.Context, testInfo TestInfo, ch chan<- A
 	}
 
 	ch <- ActionDone{
-		PodName: testInfo.PodName,
-		Name: "creating pod",
+		PodName:  testInfo.PodName,
+		Name:     "creating pod",
 		Duration: time.Since(podCreationStart),
 	}
 
@@ -56,8 +57,8 @@ func (c *Cluster) PreparePod(ctx context.Context, testInfo TestInfo, ch chan<- A
 	}
 
 	ch <- ActionDone{
-		PodName: testInfo.PodName,
-		Name: "sending a test command to the pod",
+		PodName:  testInfo.PodName,
+		Name:     "sending a test command to the pod",
 		Duration: time.Since(podCheckStart),
 	}
 
@@ -105,8 +106,36 @@ func (c *Cluster) PreparePod(ctx context.Context, testInfo TestInfo, ch chan<- A
 	return nil
 }
 
-func (c *Cluster) KickstartTestForPod(ctx context.Context) error {
-	return nil
+func (c *Cluster) CheckProgress(ctx context.Context, testInfo TestInfo) (bool, string, error) {
+	pod, err := c.Clientset.CoreV1().Pods(c.Namespace).Get(ctx, testInfo.PodName, v1.GetOptions{})
+
+	if err != nil {
+		c.Logger.Error(err.Error())
+	}
+
+	stdOut, _, err := executeRemoteCommand(ctx, c.RestCfg, c.Clientset, pod, "cat jmeter/jmeter.log")
+
+	_, _, fErr := executeRemoteCommand(ctx, c.RestCfg, c.Clientset, pod, "cd jmeter/sample_testResults")
+	isFinished := false
+	if fErr == nil {
+		isFinished = true
+	}
+
+	return isFinished, stdOut, err
+}
+
+func (c *Cluster) KickstartTestForPod(ctx context.Context, testInfo TestInfo) error {
+	pod, err := c.Clientset.CoreV1().Pods(c.Namespace).Get(ctx, testInfo.PodName, v1.GetOptions{})
+
+	if err != nil {
+		c.Logger.Error(err.Error())
+	}
+
+	cmd := getRunTestCommand(testInfo)
+	_, _, err = executeRemoteCommand(ctx, c.RestCfg, c.Clientset, pod, cmd)
+
+	go executeRemoteCommand(ctx, c.RestCfg, c.Clientset, pod, "cd jmeter && sh ./run.sh")
+	return err
 }
 
 func (c *Cluster) CollectResultsFromPod(ctx context.Context) error {
@@ -116,7 +145,7 @@ func (c *Cluster) CollectResultsFromPod(ctx context.Context) error {
 func (c *Cluster) DeletePod(ctx context.Context, podName string) error {
 	err := deletePod(ctx, c.Clientset, c.Namespace, podName)
 	if err != nil {
-		c.Logger.Error("Failed to delete pod: ", err.Error())
+		c.Logger.Error("Failed to delete pod: ", slog.Any("err", err.Error()))
 		return err
 	}
 

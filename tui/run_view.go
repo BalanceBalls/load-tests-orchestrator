@@ -75,7 +75,7 @@ func (cm *ConfiguratorModel) handleRunViewUpdate(msg tea.Msg) (tea.Model, tea.Cm
 		}
 		if msg.String() == "ctrl+q" {
 			m.finishRun()
-			return cm, tea.Tick(1 * time.Second, func(t time.Time) tea.Msg { return nil })
+			return cm, tea.Tick(1*time.Second, func(t time.Time) tea.Msg { return nil })
 		}
 
 		changeCmd := m.handleKeyUpdates(msg)
@@ -91,7 +91,7 @@ func (cm *ConfiguratorModel) handleRunViewUpdate(msg tea.Msg) (tea.Model, tea.Cm
 		var confirmModel tea.Model
 		confirmModel, formCmd = m.confirm.Update(msg)
 		cmds = append(cmds, formCmd)
-		m.handleConfirmationResult(confirmModel)
+		cm.handleConfirmationResult(confirmModel)
 		cmds = append(cmds, m.spinner.Tick)
 	} else {
 		var updatedPaginator paginator.Model
@@ -261,7 +261,8 @@ func getPodsTable(pods []RunPodInfo) string {
 	return t.Render()
 }
 
-func (m *TestRunModel) handleConfirmationResult(cf tea.Model) {
+func (cm *ConfiguratorModel) handleConfirmationResult(cf tea.Model) {
+	m := cm.run
 	if f, ok := cf.(*huh.Form); ok {
 		m.confirm = f
 
@@ -272,7 +273,7 @@ func (m *TestRunModel) handleConfirmationResult(cf tea.Model) {
 
 				switch m.runState {
 				case StartConfirm:
-					go m.startRun()
+					go cm.startRun()
 				case CancelConfirm:
 					go m.cancelRun()
 				case ResetConfirm:

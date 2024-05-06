@@ -100,11 +100,13 @@ func getTestUploadCommands(test TestInfo, namespace string) []localCommand {
 func getRunTestCommand(test TestInfo) string {
 	resultsPath := strings.TrimSuffix(test.ScenarioFileName, filepath.Ext(test.ScenarioFileName))
 	resultsPath += resultPathEnding
-	copyScenario := fmt.Sprintf("apache-jmeter-5.5/bin/jmeter -q %s -n -t '%s' -e -o %s -l %s",
+	copyScenario := fmt.Sprintf(
+		"touch jmeter/run.sh &&" + 
+		"echo \"apache-jmeter-5.6.3/bin/jmeter -q %s -n -t '%s' -e -o %s -l %s\" > jmeter/run.sh &&" +
+		"chmod +x jmeter/run.sh",
 		test.PropFileName,
 		test.ScenarioFileName,
 		resultsPath,
 		logFileName)
-
 	return copyScenario
 }

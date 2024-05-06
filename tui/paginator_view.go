@@ -51,14 +51,14 @@ func (m *ConfiguratorModel) handlePaginatorUpdate(msg tea.Msg) (tea.Model, tea.C
 		case "s":
 			m.currentView = FilePick
 			m.filepicker = &FilePickerModule{
-				model: GetFilePicker(),
+				model: GetFilePicker(true),
 				mode:  0,
 			}
 			return m, m.filepicker.model.Init()
 		case "p":
 			m.currentView = FilePick
 			m.filepicker = &FilePickerModule{
-				model: GetFilePicker(),
+				model: GetFilePicker(false),
 				mode:  1,
 			}
 			return m, m.filepicker.model.Init()
