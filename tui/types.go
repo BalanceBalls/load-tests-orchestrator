@@ -17,9 +17,15 @@ import (
 type PodInfo struct {
 	id               int
 	name             string
-	logs             string
+	data             PodLogs
 	propsFilePath    string
 	scenarioFilePath string
+}
+
+type PodLogs struct {
+	// How many consecutive checks logs remain unchanged
+	staleFor int
+	logs     string
 }
 
 type ConfigViewModel struct {
@@ -142,5 +148,6 @@ const (
 	CancelConfirm
 	Cancelled
 	ResetConfirm
+	Failed
 	Done
 )

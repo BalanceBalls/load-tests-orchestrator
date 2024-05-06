@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"os/exec"
 	"path/filepath"
-	"strings"
 )
 
 const logFileName = "newlog.jtl"
 const resultPathEnding = "Results"
+const resultsPath = "LoadTestResutls/"
 
 // Pod setup
 const (
@@ -98,8 +98,6 @@ func getTestUploadCommands(test TestInfo, namespace string) []localCommand {
 }
 
 func getRunTestCommand(test TestInfo) string {
-	resultsPath := strings.TrimSuffix(test.ScenarioFileName, filepath.Ext(test.ScenarioFileName))
-	resultsPath += resultPathEnding
 	copyScenario := fmt.Sprintf(
 		"touch jmeter/run.sh &&" + 
 		"echo \"apache-jmeter-5.6.3/bin/jmeter -q %s -n -t '%s' -e -o %s -l %s\" > jmeter/run.sh &&" +

@@ -3,7 +3,6 @@ package tui
 import (
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/charmbracelet/bubbles/paginator"
 	"github.com/charmbracelet/bubbles/spinner"
@@ -53,7 +52,6 @@ func (cm *ConfiguratorModel) handleRunView() string {
 }
 
 func (cm *ConfiguratorModel) handleRunViewUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
-
 	m := cm.run
 	var (
 		podViewCmd tea.Cmd
@@ -63,7 +61,7 @@ func (cm *ConfiguratorModel) handleRunViewUpdate(msg tea.Msg) (tea.Model, tea.Cm
 		cmds       []tea.Cmd
 	)
 
-	if m.runState == Completed {
+	if m.runState == Done {
 		collectResults(cm)
 		return cm, cm.resultsCollection.spinner.Tick
 	}
@@ -73,11 +71,6 @@ func (cm *ConfiguratorModel) handleRunViewUpdate(msg tea.Msg) (tea.Model, tea.Cm
 		if msg.String() == "ctrl+c" {
 			return cm, tea.Quit
 		}
-		if msg.String() == "ctrl+q" {
-			m.finishRun()
-			return cm, tea.Tick(1*time.Second, func(t time.Time) tea.Msg { return nil })
-		}
-
 		changeCmd := m.handleKeyUpdates(msg)
 		if changeCmd != nil {
 			return cm, changeCmd
@@ -101,7 +94,7 @@ func (cm *ConfiguratorModel) handleRunViewUpdate(msg tea.Msg) (tea.Model, tea.Cm
 		m.pages = updatedPaginator
 
 		if !m.isTableView {
-			m.podViews.SetContent(m.pods[m.currentPod].logs)
+			m.podViews.SetContent(m.pods[m.currentPod].data.logs)
 			m.podViews, podViewCmd = m.podViews.Update(msg)
 			cmds = append(cmds, podViewCmd)
 		}
@@ -179,6 +172,7 @@ func (m *ConfiguratorModel) InitRunView() *TestRunModel {
 				name:             m.pods[i].name,
 				scenarioFilePath: m.pods[i].scenarioFilePath,
 				propsFilePath:    m.pods[i].propsFilePath,
+				data:             PodLogs{logs: "no logs yet"},
 			},
 			runState:   NotStarted,
 			err:        nil,
@@ -205,11 +199,6 @@ func (m *ConfiguratorModel) InitRunView() *TestRunModel {
 	}
 
 	runModel.table = getPodsTable(runModel.pods)
-	for i := range len(m.pods) {
-		content := readFile("./jmeter.log")
-		runModel.pods[i].logs = strings.Join(content, "\n")
-	}
-
 	confirmationForm := huh.NewForm(huh.NewGroup(runModel.getConfirmationDialog()))
 	runModel.confirm = confirmationForm
 
@@ -227,6 +216,8 @@ func (state TestRunState) String() string {
 		stateStr = completedStyle.Render("run completed")
 	case Cancelled:
 		stateStr = accentInfo.Render("run is cancelled")
+	case Failed:
+		stateStr = accentInfo.Render("run failed")
 	default:
 		stateStr = "Unknown state"
 	}

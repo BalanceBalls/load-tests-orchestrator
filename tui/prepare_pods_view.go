@@ -33,7 +33,6 @@ func (m *ConfiguratorModel) InitPodsPreparation() *PreparePodsModel {
 	numLastResults := 10
 	s := spinner.New()
 	s.Style = spinnerStyle
-	s.Style.Height(10)
 
 	prepareCtx, cancel := context.WithCancel(m.ctx)
 
@@ -80,12 +79,12 @@ func (m *ConfiguratorModel) handlePodsPreparationView() string {
 	var b strings.Builder
 
 	if m.preparation.quitting && m.preparation.err == "" {
-		b.WriteString("Pods are now ready to run load tests!")
+		b.WriteString("Pods are now ready to run load tests!\n")
 	} else {
 		if m.preparation.err != "" {
 			b.WriteString(accentInfo.Render("\n" + m.preparation.err))
 		}
-		b.WriteString(m.preparation.spinner.View() + " Preparing pods...")
+		b.WriteString(m.preparation.spinner.View() + " Preparing pods...\n")
 	}
 
 	for _, res := range m.preparation.results {
@@ -93,7 +92,7 @@ func (m *ConfiguratorModel) handlePodsPreparationView() string {
 	}
 
 	if !m.preparation.quitting {
-		b.WriteString(helpStyle.Render("Pods are being prepared..."))
+		b.WriteString(helpStyle.Render("\n\n\nPods are being prepared..."))
 	}
 
 	if m.preparation.quitting {

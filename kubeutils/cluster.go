@@ -115,7 +115,9 @@ func (c *Cluster) CheckProgress(ctx context.Context, testInfo TestInfo) (bool, s
 
 	stdOut, _, err := executeRemoteCommand(ctx, c.RestCfg, c.Clientset, pod, "cat jmeter/jmeter.log")
 
-	_, _, fErr := executeRemoteCommand(ctx, c.RestCfg, c.Clientset, pod, "cd jmeter/sample_testResults")
+	finishedRunIndicator := "cd jmeter/" + resultsPath
+	// TODO: consider 'top -bn1 > state | cat state | grep jmeter' to watch actual jmeter process
+	_, _, fErr := executeRemoteCommand(ctx, c.RestCfg, c.Clientset, pod, finishedRunIndicator)
 	isFinished := false
 	if fErr == nil {
 		isFinished = true
