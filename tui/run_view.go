@@ -31,7 +31,7 @@ func (cm *ConfiguratorModel) handleRunView() string {
 	if m.isTableView {
 		b.WriteString("\n" + m.table)
 	} else {
-		b.WriteString(podLogsStyle.Render("\n" + m.podViews.View()))
+		b.WriteString(podLogsStyle.Render("\n" + m.podViews[m.currentPod].View()))
 	}
 
 	b.WriteString("\nCurrent run state: " + m.runState.String())
@@ -43,18 +43,13 @@ func (cm *ConfiguratorModel) handleRunView() string {
 		b.WriteString("\n" + m.pages.View())
 	}
 
-	b.WriteString(helpStyle.Render("\n\nctrl+s: start run • ctrl+k: cancel ongoing run "))
-	b.WriteString(helpStyle.Render("\nctrl+r: reset run to initial state (stop current run and clear files)"))
-	b.WriteString(helpStyle.Render("\nd: scroll logs to bottom • v: switch between table and logs views"))
-	b.WriteString(helpStyle.Render("\nh/l ←/→ page • ctrl+c: quit"))
-	b.WriteString("\n\n")
+	b.WriteString(getHelpText())
 	return b.String()
 }
 
 func (cm *ConfiguratorModel) handleRunViewUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m := cm.run
 	var (
-		podViewCmd tea.Cmd
 		formCmd    tea.Cmd
 		pagesCmd   tea.Cmd
 		spinnerCmd tea.Cmd
@@ -94,8 +89,10 @@ func (cm *ConfiguratorModel) handleRunViewUpdate(msg tea.Msg) (tea.Model, tea.Cm
 		m.pages = updatedPaginator
 
 		if !m.isTableView {
-			m.podViews.SetContent(m.pods[m.currentPod].data.logs)
-			m.podViews, podViewCmd = m.podViews.Update(msg)
+			m.podViews[m.currentPod].SetContent(m.pods[m.currentPod].data.logs)
+			updatedPodView, podViewCmd := m.podViews[m.currentPod].Update(msg)
+			m.podViews[m.currentPod] = updatedPodView
+
 			cmds = append(cmds, podViewCmd)
 		}
 	}
@@ -125,7 +122,7 @@ func (m *TestRunModel) handleKeyUpdates(msg tea.KeyMsg) tea.Cmd {
 		return m.spinner.Tick
 	case "ctrl+r":
 		switch m.runState {
-		case InProgress, Cancelled:
+		case Completed, Cancelled:
 			prev := m.runState
 			m.prevRunState = &prev
 			m.runState = ResetConfirm
@@ -137,7 +134,7 @@ func (m *TestRunModel) handleKeyUpdates(msg tea.KeyMsg) tea.Cmd {
 		m.isTableView = !m.isTableView
 		return m.spinner.Tick
 	case "d":
-		m.podViews.GotoBottom()
+		m.podViews[m.currentPod].GotoBottom()
 		return m.spinner.Tick
 	}
 
@@ -165,6 +162,7 @@ func (m *ConfiguratorModel) InitRunView() *TestRunModel {
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("155"))
 
 	var loadTestPods []RunPodInfo
+	var podViews []viewport.Model
 	for i := range podsAmount {
 		tPod := RunPodInfo{
 			PodInfo: PodInfo{
@@ -178,11 +176,12 @@ func (m *ConfiguratorModel) InitRunView() *TestRunModel {
 			err:        nil,
 			resultPath: "",
 		}
+		vp := viewport.New(200, viewportHeight)
+		vp.MouseWheelEnabled = true
+
+		podViews = append(podViews, vp)
 		loadTestPods = append(loadTestPods, tPod)
 	}
-
-	vp := viewport.New(200, viewportHeight)
-	vp.MouseWheelEnabled = true
 
 	runModel := &TestRunModel{
 		runState:    NotStarted,
@@ -190,7 +189,7 @@ func (m *ConfiguratorModel) InitRunView() *TestRunModel {
 		pods:        loadTestPods,
 		isTableView: true,
 		currentPod:  0,
-		podViews:    vp,
+		podViews:    podViews,
 		pages:       p,
 		spinner:     s,
 		showSpinner: false,
@@ -266,9 +265,9 @@ func (cm *ConfiguratorModel) handleConfirmationResult(cf tea.Model) {
 				case StartConfirm:
 					go cm.startRun()
 				case CancelConfirm:
-					go m.cancelRun()
+					go cm.cancelRun()
 				case ResetConfirm:
-					go m.resetRun()
+					go cm.resetRun()
 				}
 			} else {
 				m.isConfirmed = false
@@ -296,7 +295,7 @@ func (m *TestRunModel) getConfirmationDialog() *huh.Confirm {
 	case CancelConfirm:
 		msg = "Do you want to stop current load test run?"
 	case ResetConfirm:
-		msg = "Do you want to stop current run and reset pods for a new run?"
+		msg = "Do you want to reset pods for a new run?"
 	}
 
 	return huh.NewConfirm().
@@ -305,4 +304,15 @@ func (m *TestRunModel) getConfirmationDialog() *huh.Confirm {
 		Negative("No").
 		Key("conf").
 		Value(&m.isConfirmed)
+}
+
+func getHelpText() string {
+	var b strings.Builder
+	b.WriteString(helpStyle.Render("\n\nctrl+s: start run • ctrl+k: cancel ongoing run "))
+	b.WriteString(helpStyle.Render("\nctrl+r: reset run to initial state (remove files produced by previous run)"))
+	b.WriteString(helpStyle.Render("\nd: scroll logs to bottom • v: switch between table and logs views"))
+	b.WriteString(helpStyle.Render("\nctrl+d: scroll half page down • ctrl+u: scroll half page up"))
+	b.WriteString(helpStyle.Render("\nh/l ←/→ page • ctrl+c: quit"))
+	b.WriteString("\n\n")
+	return b.String()
 }

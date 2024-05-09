@@ -94,7 +94,7 @@ type TestRunModel struct {
 	pods         []RunPodInfo
 	isTableView  bool
 	currentPod   int
-	podViews     viewport.Model
+	podViews     []viewport.Model
 	pages        paginator.Model
 	confirm      *huh.Form
 	table        string
@@ -120,9 +120,9 @@ type RunConfigData struct {
 type RunPodInfo struct {
 	PodInfo
 
-	runState   TestRunState
-	err        error
-	resultPath string
+	runState      TestRunState
+	err           error
+	resultPath    string
 }
 
 type AppViewState uint

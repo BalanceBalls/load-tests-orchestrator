@@ -225,7 +225,7 @@ func (m *ConfiguratorModel) handleConfigFormUpdate(msg tea.Msg) (tea.Model, tea.
 
 		m.configForm.showSpinner = false
 		time.Sleep(1 * time.Second)
-		m.initPaginatorView(totalPages)
+		m.initTestsSetupView(totalPages)
 		m.currentView = PodsSetup
 
 		return m, nil

@@ -48,17 +48,15 @@ func (m *ConfiguratorModel) startRun() {
 	duration := 3 * time.Second
 	ticker := time.NewTicker(duration)
 	updChannel := make(chan PodUpdate)
-	isDone := false
 
 free:
-	for !isDone {
+	for {
 		select {
 		case <-ticker.C:
 			m.logger.Info("TICK")
 			if m.run.runState == InProgress {
 				go m.checkIfRunComplete(m.ctx, m.run.pods, updChannel)
 			} else {
-				isDone = true
 				break free
 			}
 		case upd := <-updChannel:
@@ -112,6 +110,8 @@ func (m ConfiguratorModel) checkIfRunComplete(ctx context.Context, pods []RunPod
 		isFinished, logs, err := m.cluster.CheckProgress(ctx, testInfo)
 		if err != nil {
 			podUpd.err = err
+			podUpd.state = Failed
+			podUpd.inProgress = false
 		}
 
 		if strings.EqualFold(pod.data.logs, logs) {
@@ -119,7 +119,7 @@ func (m ConfiguratorModel) checkIfRunComplete(ctx context.Context, pods []RunPod
 		}
 
 		if pod.data.staleFor > staleThreshold {
-			// cPod.err = staleErr
+			podUpd.err = staleErr
 			podUpd.inProgress = false
 			podUpd.state = Failed
 		}
@@ -134,16 +134,19 @@ func (m ConfiguratorModel) checkIfRunComplete(ctx context.Context, pods []RunPod
 	}
 }
 
-func (m *TestRunModel) cancelRun() {
-	for i := range m.pods {
-		// Send command to cancel run
-		m.pods[i].runState = Cancelled
+func (m *ConfiguratorModel) cancelRun() {
+	for i, pod := range m.pods {
+		testInfo := kubeutils.TestInfo{
+			PodName: pod.name,
+		}
+		m.cluster.CancelRunForPod(m.ctx, testInfo)
+		m.run.pods[i].runState = Cancelled
 	}
 
-	m.table = getPodsTable(m.pods)
+	m.run.table = getPodsTable(m.run.pods)
 
-	m.runState = Cancelled
-	m.showSpinner = false
+	m.run.runState = Cancelled
+	m.run.showSpinner = false
 }
 
 func (m *TestRunModel) finishRun() {
@@ -163,16 +166,19 @@ func (m *TestRunModel) finishRun() {
 	m.runState = Completed
 }
 
-func (m *TestRunModel) resetRun() {
-	for i := range m.pods {
-		// Stop current run
-		// Clear files
-		m.pods[i].runState = NotStarted
+func (m *ConfiguratorModel) resetRun() {
+	for i, pod := range m.pods {
+		testInfo := kubeutils.TestInfo{
+			PodName: pod.name,
+		}
+		m.cluster.ResetPodForNewRun(m.ctx, testInfo)
+		m.run.pods[i].runState = NotStarted
+		m.run.pods[i].data.logs = "Pod is now ready for a new run"
 	}
 
-	m.table = getPodsTable(m.pods)
-	m.runState = NotStarted
-	m.showSpinner = false
+	m.run.table = getPodsTable(m.run.pods)
+	m.run.runState = NotStarted
+	m.run.showSpinner = false
 }
 
 func collectResults(m *ConfiguratorModel) {

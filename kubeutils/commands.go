@@ -13,11 +13,18 @@ const resultsPath = "LoadTestResutls/"
 // Pod setup
 const (
 	installAndUpdateDeps = "apt update && apt install openjdk-11-jre-headless wget unzip nano -y"
-	downloadJmeter       = "mkdir jmeter && cd jmeter && wget http://www.gtlib.gatech.edu/pub/apache/jmeter/binaries/apache-jmeter-5.6.3.tgz"
+	downloadJmeter       = "mkdir jmeter && cd jmeter && wget https://dlcdn.apache.org//jmeter/binaries/apache-jmeter-5.6.3.tgz"
 	unpackJmeterArchive  = "cd jmeter && tar -xf apache-jmeter-5.6.3.tgz && rm apache-jmeter-5.6.3.tgz"
 	downloadPlugin       = "cd jmeter && wget https://jmeter-plugins.org/files/packages/jpgc-casutg-2.10.zip"
 	unpackPluginArchive  = "cd jmeter && unzip jpgc-casutg-2.10.zip -d apache-jmeter-5.6.3/ && rm jpgc-casutg-2.10.zip"
 	testJmeter           = "jmeter/apache-jmeter-5.6.3/bin/jmeter --help"
+)
+
+// Test reset
+const (
+	removeResultsDir  = "rm -r jmeter/" + resultsPath
+	removeJmeterLog   = "rm jmeter/jmeter.log"
+	removeRequestsLog = "rm jmeter/newlog.jtl"
 )
 
 func getPodSetupCommands() []remoteCommand {
@@ -97,14 +104,40 @@ func getTestUploadCommands(test TestInfo, namespace string) []localCommand {
 	return cmds
 }
 
-func getRunTestCommand(test TestInfo) string {
+func getPrepareRunTestCommand(test TestInfo) string {
 	copyScenario := fmt.Sprintf(
-		"touch jmeter/run.sh &&" + 
-		"echo \"apache-jmeter-5.6.3/bin/jmeter -q %s -n -t '%s' -e -o %s -l %s\" > jmeter/run.sh &&" +
-		"chmod +x jmeter/run.sh",
+		"touch jmeter/run.sh &&"+
+			"echo \"apache-jmeter-5.6.3/bin/jmeter -q %s -n -t '%s' -e -o %s -l %s\" > jmeter/run.sh &&"+
+			"chmod +x jmeter/run.sh",
 		test.PropFileName,
 		test.ScenarioFileName,
 		resultsPath,
 		logFileName)
 	return copyScenario
+}
+
+func getRunTestCommand() string {
+	runTestCmd := "cd jmeter && sh ./run.sh" 
+	return runTestCmd
+}
+
+func getStopTestCommand() string {
+	stopCmd := "sh jmeter/apache-jmeter-5.6.3/bin/stoptest.sh"
+	return stopCmd
+}
+
+func getResetTestCommands() []string {
+	resetCmds := []string{removeResultsDir, removeJmeterLog, removeRequestsLog}
+
+	return resetCmds
+}
+
+func getCheckSuccessfulFinishCommand() string {
+	finishedRunIndicator := "cd jmeter/" + resultsPath
+	return finishedRunIndicator
+}
+
+func getCheckJmeterStateCommand() string {
+	checkJmeterCmd := "ps | grep jmeter && echo 'running' || echo 'stopped'"
+	return checkJmeterCmd
 }

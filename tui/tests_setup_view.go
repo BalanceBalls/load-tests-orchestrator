@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -10,11 +11,14 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-func (m *ConfiguratorModel) handlePaginatorView() string {
+func (m *ConfiguratorModel) handleTestsSetupView() string {
 	var b strings.Builder
 	namespace := m.configForm.inputs[1].Value()
 
 	b.WriteString(focusedStyle.Render("\nPrepare pods"))
+	if m.err != nil {
+		b.WriteString(accentInfo.Render("\n\n Error: " + m.err.Error() + "\n"))
+	}
 	b.WriteString(configInfoStyle.Render("\nNamespace: " + namespace))
 	start, end := m.paginator.GetSliceBounds(len(m.pods))
 	for _, item := range m.pods[start:end] {
@@ -44,7 +48,7 @@ func (m *ConfiguratorModel) handlePaginatorView() string {
 	return b.String()
 }
 
-func (m *ConfiguratorModel) handlePaginatorUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *ConfiguratorModel) handleTestsSetupUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -63,9 +67,20 @@ func (m *ConfiguratorModel) handlePaginatorUpdate(msg tea.Msg) (tea.Model, tea.C
 			}
 			return m, m.filepicker.model.Init()
 		case "c":
-			initiatedConfirm := m.InitConfirmation()
-			m.setupConfirmation = &initiatedConfirm
-			m.currentView = ReviewSetup
+			isConfigured := true
+			for _, pod := range m.pods {
+				if pod.propsFilePath == "" || pod.scenarioFilePath == "" {
+					isConfigured = false
+					m.err = errors.New("not all pods have test files configured")
+				}
+			}
+
+			if isConfigured {
+				m.err = nil
+				initiatedConfirm := m.InitConfirmation()
+				m.setupConfirmation = &initiatedConfirm
+				m.currentView = ReviewSetup
+			}
 			return m, nil
 		}
 	}
@@ -75,8 +90,9 @@ func (m *ConfiguratorModel) handlePaginatorUpdate(msg tea.Msg) (tea.Model, tea.C
 	return m, cmd
 }
 
-func (m *ConfiguratorModel) initPaginatorView(totalPages int) {
+func (m *ConfiguratorModel) initTestsSetupView(totalPages int) {
 	m.pods = make([]PodInfo, totalPages)
+	m.err = nil
 
 	p := paginator.New()
 	p.Type = paginator.Dots

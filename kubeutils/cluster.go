@@ -2,8 +2,10 @@ package kubeutils
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"os"
+	"strings"
 	"time"
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -33,8 +35,6 @@ func (c *Cluster) CreatePod(ctx context.Context, podName string) error {
 }
 
 func (c *Cluster) PreparePod(ctx context.Context, testInfo TestInfo, ch chan<- ActionDone) error {
-	// pod, err := c.Clientset.CoreV1().Pods(c.Namespace).Get(ctx, testInfo.PodName, v1.GetOptions{})
-
 	podCreationStart := time.Now()
 	pod, err := createPod(ctx, c.Clientset, c.Namespace, testInfo.PodName)
 	if err != nil {
@@ -114,13 +114,30 @@ func (c *Cluster) CheckProgress(ctx context.Context, testInfo TestInfo) (bool, s
 	}
 
 	stdOut, _, err := executeRemoteCommand(ctx, c.RestCfg, c.Clientset, pod, "cat jmeter/jmeter.log")
+	if err != nil {
+		return false, stdOut, err
+	}
 
-	finishedRunIndicator := "cd jmeter/" + resultsPath
-	// TODO: consider 'top -bn1 > state | cat state | grep jmeter' to watch actual jmeter process
-	_, _, fErr := executeRemoteCommand(ctx, c.RestCfg, c.Clientset, pod, finishedRunIndicator)
+	finishedRunIndicator := getCheckSuccessfulFinishCommand()
+	checkJmeterCmd := getCheckJmeterStateCommand()
+
+	jmeterState, errOut, jErr := executeRemoteCommand(ctx, c.RestCfg, c.Clientset, pod, checkJmeterCmd)
+	if jErr != nil {
+		c.Logger.Error(jErr.Error())
+		c.Logger.Error(errOut)
+	}
+
 	isFinished := false
-	if fErr == nil {
+	c.Logger.Info("Jmeter state", slog.String("pod", testInfo.PodName), slog.String("state", jmeterState))
+	c.Logger.Info("Jmeter state err output", slog.String("pod", testInfo.PodName), slog.String("errOut", errOut))
+
+	jmeterState = strings.TrimSuffix(jmeterState, "\n")
+	if jmeterState == "stopped" {
 		isFinished = true
+		_, _, fErr := executeRemoteCommand(ctx, c.RestCfg, c.Clientset, pod, finishedRunIndicator)
+		if fErr != nil {
+			err = errors.New("run did not produce results")
+		}
 	}
 
 	return isFinished, stdOut, err
@@ -133,10 +150,41 @@ func (c *Cluster) KickstartTestForPod(ctx context.Context, testInfo TestInfo) er
 		c.Logger.Error(err.Error())
 	}
 
-	cmd := getRunTestCommand(testInfo)
+	cmd := getPrepareRunTestCommand(testInfo)
 	_, _, err = executeRemoteCommand(ctx, c.RestCfg, c.Clientset, pod, cmd)
 
-	go executeRemoteCommand(ctx, c.RestCfg, c.Clientset, pod, "cd jmeter && sh ./run.sh")
+	go executeRemoteCommand(ctx, c.RestCfg, c.Clientset, pod, getRunTestCommand())
+	return err
+}
+
+func (c *Cluster) CancelRunForPod(ctx context.Context, testInfo TestInfo) error {
+	pod, err := c.Clientset.CoreV1().Pods(c.Namespace).Get(ctx, testInfo.PodName, v1.GetOptions{})
+
+	if err != nil {
+		c.Logger.Error(err.Error())
+	}
+
+	stdOut, _, err := executeRemoteCommand(ctx, c.RestCfg, c.Clientset, pod, getStopTestCommand())
+	c.Logger.Info(stdOut)
+
+	return err
+}
+
+func (c *Cluster) ResetPodForNewRun(ctx context.Context, testInfo TestInfo) error {
+	pod, err := c.Clientset.CoreV1().Pods(c.Namespace).Get(ctx, testInfo.PodName, v1.GetOptions{})
+
+	if err != nil {
+		c.Logger.Error(err.Error())
+	}
+
+	for _, cmd := range getResetTestCommands() {
+		stdOut, _, err := executeRemoteCommand(ctx, c.RestCfg, c.Clientset, pod, cmd)
+		if err != nil {
+			return err
+		}
+		c.Logger.Info(stdOut)
+	}
+
 	return err
 }
 

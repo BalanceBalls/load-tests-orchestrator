@@ -44,7 +44,7 @@ func (m *ConfiguratorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case Config:
 		return m.handleConfigFormUpdate(msg)
 	case PodsSetup:
-		return m.handlePaginatorUpdate(msg)
+		return m.handleTestsSetupUpdate(msg)
 	case FilePick:
 		return m.handleFilepickerUpdate(msg)
 	case ReviewSetup:
@@ -65,7 +65,7 @@ func (m *ConfiguratorModel) View() string {
 	case Config:
 		return m.handleConfigFormView()
 	case PodsSetup:
-		return m.handlePaginatorView()
+		return m.handleTestsSetupView()
 	case FilePick:
 		return m.handleFilepickerView()
 	case ReviewSetup:

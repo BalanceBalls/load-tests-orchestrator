@@ -82,7 +82,7 @@ func (m *ConfiguratorModel) handlePodsPreparationView() string {
 		b.WriteString("Pods are now ready to run load tests!\n")
 	} else {
 		if m.preparation.err != "" {
-			b.WriteString(accentInfo.Render("\n" + m.preparation.err))
+			b.WriteString(accentInfo.Render("\n" + m.preparation.err + "\n"))
 		}
 		b.WriteString(m.preparation.spinner.View() + " Preparing pods...\n")
 	}
