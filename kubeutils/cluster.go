@@ -188,8 +188,47 @@ func (c *Cluster) ResetPodForNewRun(ctx context.Context, testInfo TestInfo) erro
 	return err
 }
 
-func (c *Cluster) CollectResultsFromPod(ctx context.Context) error {
-	return nil
+func (c *Cluster) CollectResultsFromPod(ctx context.Context, testInfo TestInfo, ch chan<- ActionDone) error {
+	pod, err := c.Clientset.CoreV1().Pods(c.Namespace).Get(ctx, testInfo.PodName, v1.GetOptions{})
+
+	if err != nil {
+		c.Logger.Error(err.Error())
+	}
+
+	packStart := time.Now()
+	packResultsCmd := getPackResultsCommand()
+	stdOut, _, err := executeRemoteCommand(ctx, c.RestCfg, c.Clientset, pod, packResultsCmd)
+	if err != nil {
+		return err
+	}
+	c.Logger.Info(stdOut)
+	ch <- ActionDone{
+		PodName:  testInfo.PodName,
+		Name:     "pack results into archive",
+		Duration: time.Since(packStart),
+	}
+
+	downloadStart := time.Now()
+	downloadResultsCmd := getDownloadResultsCommand(testInfo, c.Namespace, c.PodPrefix)
+
+	downloadResultsCmd.command.Stdout = os.Stdout
+	downloadResultsCmd.command.Stderr = os.Stderr
+
+	c.Logger.Info("Executing cmd: " + downloadResultsCmd.command.String())
+
+	err = downloadResultsCmd.command.Run()
+	if err != nil {
+		c.Logger.Error("Failed to download results from pod: ", slog.Any("err", err.Error()))
+		return err
+	}
+
+	ch <- ActionDone{
+		PodName:  testInfo.PodName,
+		Name:     downloadResultsCmd.displayName,
+		Duration: time.Since(downloadStart),
+	}
+
+	return err
 }
 
 func (c *Cluster) DeletePod(ctx context.Context, podName string) error {

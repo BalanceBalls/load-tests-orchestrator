@@ -133,6 +133,7 @@ func (m *ConfiguratorModel) getClusterConfig(kubeCtx string) (*kubeutils.Cluster
 	cluster := kubeutils.Cluster{
 		RestCfg:     config,
 		Clientset:   clientset,
+		PodPrefix:   m.configForm.inputs[0].Value(),
 		Namespace:   m.configForm.inputs[1].Value(),
 		KubeCtxName: m.configForm.inputs[2].Value(),
 		Logger:      *m.logger,

@@ -14,6 +14,7 @@ type Cluster struct {
 	Clientset   *kubernetes.Clientset
 	Namespace   string
 	KubeCtxName string
+	PodPrefix   string
 	Logger      slog.Logger
 }
 

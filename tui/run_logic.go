@@ -74,6 +74,7 @@ free:
 
 			runIsFinished := true
 			runHasFailedTests := false
+
 			for _, pod := range m.run.pods {
 				if pod.runState == Failed {
 					runHasFailedTests = true
@@ -88,15 +89,13 @@ free:
 				if runHasFailedTests {
 					m.run.runState = Failed
 				} else {
-					m.run.runState = Completed
+					m.run.runState = Done
 				}
 			}
 		}
 	}
 
 	m.logger.Info("RUN COMPLETE")
-
-	m.run.runState = Completed
 	m.run.showSpinner = false
 }
 
@@ -189,7 +188,7 @@ func collectResults(m *ConfiguratorModel) {
 	go func() {
 		ch := make(chan kubeutils.ActionDone)
 		defer close(ch)
-		go m.resultsCollection.saveResults(ch)
+		go m.saveResults(ch)
 
 		for r := range ch {
 			m.Update(r)

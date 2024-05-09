@@ -52,11 +52,14 @@ type PreparePodsModel struct {
 }
 
 type PrepareResultsModel struct {
-	pods     []PodInfo
-	spinner  spinner.Model
-	results  []kubeutils.ActionDone
-	quitting bool
+	pods              []PodInfo
+	spinner           spinner.Model
+	results           []kubeutils.ActionDone
+	isCollected       bool
+	quitting          bool
+	deletePodsConfirm *huh.Form
 
+	err    error
 	logger *slog.Logger
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -120,9 +123,9 @@ type RunConfigData struct {
 type RunPodInfo struct {
 	PodInfo
 
-	runState      TestRunState
-	err           error
-	resultPath    string
+	runState   TestRunState
+	err        error
+	resultPath string
 }
 
 type AppViewState uint

@@ -2,8 +2,11 @@ package kubeutils
 
 import (
 	"fmt"
+	"io/fs"
+	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 )
 
 const logFileName = "newlog.jtl"
@@ -117,7 +120,7 @@ func getPrepareRunTestCommand(test TestInfo) string {
 }
 
 func getRunTestCommand() string {
-	runTestCmd := "cd jmeter && sh ./run.sh" 
+	runTestCmd := "cd jmeter && sh ./run.sh"
 	return runTestCmd
 }
 
@@ -130,6 +133,41 @@ func getResetTestCommands() []string {
 	resetCmds := []string{removeResultsDir, removeJmeterLog, removeRequestsLog}
 
 	return resetCmds
+}
+
+func getPackResultsCommand() string {
+	resultFolderName := strings.TrimSuffix(resultsPath, "/")
+	packResultsCmd := fmt.Sprintf("tar -zcvf jmeter/%s.tar.gz /jmeter/%s", resultFolderName, resultFolderName)
+	return packResultsCmd
+}
+
+func getDownloadResultsCommand(test TestInfo, namespace string, podPrefix string) localCommand {
+	ext := ".tar.gz"
+	podResultsName := strings.TrimSuffix(resultsPath, "/")
+	archivePath := podResultsName + ext
+
+	pathToDir := fmt.Sprintf("./%s_results/%s/", podPrefix, test.PodName)
+	os.MkdirAll(pathToDir, fs.ModePerm)
+
+	localResultFilePath := pathToDir + podResultsName + ext
+
+	cpyProprsCmd := exec.Command(
+		"kubectl",
+		"cp",
+		"-n",
+		namespace,
+		test.PodName+":/jmeter/"+archivePath,
+		localResultFilePath,
+		"-c",
+		test.PodName,
+	)
+
+	cmd := localCommand{
+		displayName: "results saved to " + localResultFilePath,
+		command:     cpyProprsCmd,
+	}
+
+	return cmd
 }
 
 func getCheckSuccessfulFinishCommand() string {

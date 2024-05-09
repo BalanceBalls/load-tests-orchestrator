@@ -2,7 +2,6 @@ package tui
 
 import (
 	"context"
-	"math/rand"
 	"strings"
 	"sync"
 	"terminalui/kubeutils"
@@ -10,6 +9,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/huh"
 )
 
 var resultCollectionActions = []string{"archive results", "download results"}
@@ -30,14 +30,16 @@ func (m *ConfiguratorModel) InitResultsPreparation() *PrepareResultsModel {
 		cancel:  cancel,
 	}
 
+	confirmationForm := huh.NewForm(huh.NewGroup(pm.getConfirmationDialog()))
+	pm.deletePodsConfirm = confirmationForm
 	return &pm
 }
 
 func (m *ConfiguratorModel) handleResultsPreparationUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmds []tea.Cmd
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		if msg.String() == "ctrl+c" {
-			m.resultsCollection.cancel()
 			return m, tea.Quit
 		}
 
@@ -48,22 +50,36 @@ func (m *ConfiguratorModel) handleResultsPreparationUpdate(msg tea.Msg) (tea.Mod
 		var cmd tea.Cmd
 		m.resultsCollection.spinner, cmd = m.resultsCollection.spinner.Update(msg)
 		return m, cmd
-	default:
-		if m.resultsCollection.quitting == true {
-			time.Sleep(4 * time.Second)
-			return m, tea.Quit
+	}
+
+	if m.resultsCollection.isCollected {
+		var confirmModel tea.Model
+		confirmModel, formCmd := m.resultsCollection.deletePodsConfirm.Update(msg)
+		cmds = append(cmds, formCmd)
+
+		if f, ok := confirmModel.(*huh.Form); ok {
+			if f.State == huh.StateCompleted {
+				if f.GetBool("conf") {
+					go m.deletePods()
+				} else {
+					m.resultsCollection.quitting = true
+				}
+			}
 		}
 	}
 
-	return m, nil
+	return m, tea.Batch(cmds...)
 }
 
 func (m *ConfiguratorModel) handleResultsPreparationView() string {
 	var b strings.Builder
 
-	if m.resultsCollection.quitting {
+	if m.resultsCollection.isCollected {
 		b.WriteString("Load test results have been downloaded!")
 	} else {
+		if m.resultsCollection.err != nil {
+			b.WriteString(accentInfo.Render(m.resultsCollection.err.Error()))
+		}
 		b.WriteString(m.resultsCollection.spinner.View() + " Preparing results...")
 	}
 
@@ -72,8 +88,10 @@ func (m *ConfiguratorModel) handleResultsPreparationView() string {
 		b.WriteString(formatMsg(res) + "\n")
 	}
 
-	if !m.resultsCollection.quitting {
-		b.WriteString(helpStyle.Render("Pods are being prepared..."))
+	if !m.resultsCollection.isCollected {
+		b.WriteString(helpStyle.Render("Results are being collected..."))
+	} else {
+		b.WriteString("\n\n" + m.resultsCollection.deletePodsConfirm.View() + "\n")
 	}
 
 	if m.resultsCollection.quitting {
@@ -83,37 +101,59 @@ func (m *ConfiguratorModel) handleResultsPreparationView() string {
 	return appStyle.Render(b.String())
 }
 
-func (m *PrepareResultsModel) executeStep() {
-	select {
-	case <-m.ctx.Done():
-		m.logger.Info("Stopped doing stuff")
-		return
-	default:
-		time.Sleep(time.Duration(rand.Intn(800)) * time.Millisecond)
-	}
-}
-
-func (m *PrepareResultsModel) runPodPreparation(pod PodInfo, ch chan<- kubeutils.ActionDone) {
-	for _, step := range resultCollectionActions {
-		start := time.Now()
-		m.executeStep()
-		ch <- kubeutils.ActionDone{
-			PodName:  pod.name,
-			Name:     step,
-			Duration: time.Since(start),
-		}
-	}
-}
-
-func (pm *PrepareResultsModel) saveResults(ch chan<- kubeutils.ActionDone) {
+func (m *ConfiguratorModel) saveResults(ch chan<- kubeutils.ActionDone) {
 	var wg sync.WaitGroup
-	for _, pod := range pm.pods {
+	for _, pod := range m.run.pods {
 		wg.Add(1)
-		go func(p PodInfo) {
+		go func(p RunPodInfo) {
 			defer wg.Done()
-			pm.runPodPreparation(p, ch)
+
+			testInfo := kubeutils.TestInfo{
+				PodName: p.name,
+			}
+			err := m.cluster.CollectResultsFromPod(m.preparation.ctx, testInfo, ch)
+			if err != nil {
+				m.resultsCollection.err = err
+				return
+			}
 		}(pod)
 	}
 	wg.Wait()
-	pm.quitting = true
+	m.resultsCollection.isCollected = true
+}
+
+func (m *PrepareResultsModel) getConfirmationDialog() *huh.Confirm {
+	return huh.NewConfirm().
+		Title(accentInfo.Render("Would you like to delete JMeter pods?")).
+		Affirmative("Yes").
+		Negative("No").
+		Key("conf")
+}
+
+func (m *ConfiguratorModel) deletePods() {
+	var wg sync.WaitGroup
+	for _, pod := range m.run.pods {
+		wg.Add(1)
+		go func(p RunPodInfo) {
+			defer wg.Done()
+			deleteStart := time.Now()
+			err := m.cluster.DeletePod(m.resultsCollection.ctx, p.name)
+			if err != nil {
+				m.logger.Error(err.Error())
+				m.resultsCollection.err = err
+				return
+			}
+			m.logger.Info("remove pod goroutine complete")
+
+			result := kubeutils.ActionDone{
+				PodName:  p.name,
+				Name:     "pod has been terminated",
+				Duration: time.Since(deleteStart),
+			}
+			m.Update(result)
+		}(pod)
+	}
+
+	wg.Wait()
+	m.resultsCollection.quitting = true
 }

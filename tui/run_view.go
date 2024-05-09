@@ -43,6 +43,10 @@ func (cm *ConfiguratorModel) handleRunView() string {
 		b.WriteString("\n" + m.pages.View())
 	}
 
+	if cm.run.runState == Done {
+		b.WriteString(alertStyle.Render("\nPress 'c' to continue... "))
+	}
+
 	b.WriteString(getHelpText())
 	return b.String()
 }
@@ -56,19 +60,22 @@ func (cm *ConfiguratorModel) handleRunViewUpdate(msg tea.Msg) (tea.Model, tea.Cm
 		cmds       []tea.Cmd
 	)
 
-	if m.runState == Done {
-		collectResults(cm)
-		return cm, cm.resultsCollection.spinner.Tick
-	}
-
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		if msg.String() == "ctrl+c" {
 			return cm, tea.Quit
 		}
-		changeCmd := m.handleKeyUpdates(msg)
-		if changeCmd != nil {
-			return cm, changeCmd
+
+		if m.runState == Done {
+			if msg.String() == "c" {
+				collectResults(cm)
+				return cm, cm.resultsCollection.spinner.Tick
+			}
+		} else {
+			changeCmd := m.handleKeyUpdates(msg)
+			if changeCmd != nil {
+				return cm, changeCmd
+			}
 		}
 	case spinner.TickMsg:
 		m.spinner, spinnerCmd = m.spinner.Update(msg)
@@ -217,6 +224,8 @@ func (state TestRunState) String() string {
 		stateStr = accentInfo.Render("run is cancelled")
 	case Failed:
 		stateStr = accentInfo.Render("run failed")
+	case Done:
+		stateStr = completedStyle.Render("done")
 	default:
 		stateStr = "Unknown state"
 	}

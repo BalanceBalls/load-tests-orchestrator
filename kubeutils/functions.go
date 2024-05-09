@@ -82,7 +82,7 @@ func switchLocalK8sContext(ctxName string) error {
 }
 
 func deletePod(ctx context.Context, clientset *kubernetes.Clientset, namespace, podName string) error {
-	deletePolicy := metav1.DeletePropagationForeground
+	deletePolicy := metav1.DeletePropagationBackground
 	return clientset.CoreV1().Pods(namespace).Delete(ctx, podName, metav1.DeleteOptions{
 		PropagationPolicy: &deletePolicy,
 	})
