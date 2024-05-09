@@ -67,7 +67,7 @@ func (cm *ConfiguratorModel) handleRunViewUpdate(msg tea.Msg) (tea.Model, tea.Cm
 		}
 
 		if m.runState == Done {
-			if msg.String() == "c" {
+			if msg.String() == "c" && cm.currentView == Run {
 				collectResults(cm)
 				return cm, cm.resultsCollection.spinner.Tick
 			}

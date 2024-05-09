@@ -5,7 +5,6 @@ import (
 	"errors"
 	"log/slog"
 	"path/filepath"
-	"slices"
 	"strings"
 	"terminalui/kubeutils"
 	"time"
@@ -146,23 +145,6 @@ func (m *ConfiguratorModel) cancelRun() {
 
 	m.run.runState = Cancelled
 	m.run.showSpinner = false
-}
-
-func (m *TestRunModel) finishRun() {
-	for i := range m.pods {
-		// Download results from Pod if any
-		m.pods[i].runState = Completed // Completed
-	}
-
-	runStillInProgress := slices.ContainsFunc(m.pods, func(p RunPodInfo) bool {
-		return p.runState != Completed
-	})
-
-	if runStillInProgress {
-		return
-	}
-
-	m.runState = Completed
 }
 
 func (m *ConfiguratorModel) resetRun() {

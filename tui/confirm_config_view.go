@@ -126,10 +126,6 @@ func prepareRunInfo(pods []PodInfo) string {
 		listItem += configInfoStyle.Render("\nProperties file: " + configuredStyle.Render(pod.propsFilePath))
 
 		b.WriteString(listItemStyle.Render(listItem))
-
-		// propsFileRows := readFile(pod.propsFilePath)
-		// propsFileContent := strings.Join(propsFileRows, "\n")
-		// b.WriteString(propsStyle.Render("\n" + propsFileContent))
 	}
 
 	return b.String()

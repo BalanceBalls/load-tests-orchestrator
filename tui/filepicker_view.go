@@ -93,7 +93,7 @@ func GetFilePicker(isJmx bool) filepicker.Model {
 	}
 	fp := filepicker.New()
 
-	fp.AllowedTypes = []string{ extension }
+	fp.AllowedTypes = []string{extension}
 	fp.CurrentDirectory, _ = os.Getwd()
 	fp.AutoHeight = false
 	fp.Height = 15

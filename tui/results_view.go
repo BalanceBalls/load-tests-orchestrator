@@ -41,6 +41,10 @@ func (m *ConfiguratorModel) handleResultsPreparationUpdate(msg tea.Msg) (tea.Mod
 	case tea.KeyMsg:
 		if msg.String() == "ctrl+c" {
 			return m, tea.Quit
+		} else {
+			if !m.resultsCollection.showConfirmation {
+				return m, nil
+			}
 		}
 
 	case kubeutils.ActionDone:
@@ -62,6 +66,7 @@ func (m *ConfiguratorModel) handleResultsPreparationUpdate(msg tea.Msg) (tea.Mod
 				if f.GetBool("conf") {
 					go m.deletePods()
 				} else {
+					m.resultsCollection.showConfirmation = false
 					m.resultsCollection.quitting = true
 				}
 			}
@@ -120,6 +125,7 @@ func (m *ConfiguratorModel) saveResults(ch chan<- kubeutils.ActionDone) {
 	}
 	wg.Wait()
 	m.resultsCollection.isCollected = true
+	m.resultsCollection.showConfirmation = true
 }
 
 func (m *PrepareResultsModel) getConfirmationDialog() *huh.Confirm {
@@ -131,6 +137,8 @@ func (m *PrepareResultsModel) getConfirmationDialog() *huh.Confirm {
 }
 
 func (m *ConfiguratorModel) deletePods() {
+	m.resultsCollection.showConfirmation = false
+
 	var wg sync.WaitGroup
 	for _, pod := range m.run.pods {
 		wg.Add(1)

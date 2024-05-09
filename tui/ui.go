@@ -12,12 +12,11 @@ import (
 
 func loadTestConfiguratorModel(appCtx context.Context, appLogger *slog.Logger) *ConfiguratorModel {
 	m := ConfiguratorModel{
-		ctx: appCtx,
-		logger: appLogger,
+		ctx:         appCtx,
+		logger:      appLogger,
 		currentView: Config}
 
 	m.initConfigForm()
-
 	m.logger.Info("First form initiated")
 
 	return &m

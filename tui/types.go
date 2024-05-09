@@ -58,6 +58,7 @@ type PrepareResultsModel struct {
 	isCollected       bool
 	quitting          bool
 	deletePodsConfirm *huh.Form
+	showConfirmation  bool
 
 	err    error
 	logger *slog.Logger

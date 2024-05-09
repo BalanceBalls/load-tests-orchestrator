@@ -38,12 +38,11 @@ func (m *ConfiguratorModel) handleTestsSetupView() string {
 		b.WriteString(configInfoStyle.Render("\nPod name" + divider))
 		b.WriteString(podLabelStyle.Render(item.name))
 		b.WriteString("\n" + m.paginator.View())
-
-		b.WriteString(helpStyle.Render("\n\ns: pick scenario file • p: pick properties file"))
-		b.WriteString(helpStyle.Render("\nc: continue with current config"))
-		b.WriteString(helpStyle.Render("\nh/l ←/→ page • ctrl+c: quit"))
 	}
 
+	b.WriteString(helpStyle.Render("\n\ns: pick scenario file • p: pick properties file"))
+	b.WriteString(helpStyle.Render("\nc: continue with current config"))
+	b.WriteString(helpStyle.Render("\nh/l ←/→ page • ctrl+c: quit"))
 	b.WriteString("\n\n")
 	return b.String()
 }

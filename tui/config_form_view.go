@@ -253,7 +253,6 @@ func (m *ConfiguratorModel) updateInputs(msg tea.Msg) tea.Cmd {
 }
 
 func (m *ConfiguratorModel) checkClusterConnection(ch chan<- configDone) {
-	// Perform check
 	isConnected, err := m.cluster.Ping(context.TODO())
 	if err != nil {
 		m.configForm.err = err
