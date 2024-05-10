@@ -6,18 +6,10 @@ import (
 	"strings"
 	"sync"
 	"terminalui/kubeutils"
-	"time"
 
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 )
-
-const (
-	padding  = 2
-	maxWidth = 100
-)
-
-type tickMsg time.Time
 
 func formatMsg(ad kubeutils.ActionDone) string {
 	if ad.Duration == 0 {
@@ -64,7 +56,7 @@ func (m *ConfiguratorModel) handlePodsPreparationUpdate(msg tea.Msg) (tea.Model,
 		m.preparation.spinner, cmd = m.preparation.spinner.Update(msg)
 		return m, cmd
 	default:
-		if m.preparation.quitting == true {
+		if m.preparation.quitting {
 			runView := m.InitRunView()
 			m.run = runView
 			m.currentView = Run
