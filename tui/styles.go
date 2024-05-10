@@ -62,39 +62,8 @@ var (
 	appStyle      = lipgloss.NewStyle().Margin(1, 2, 0, 2)
 	stepNameStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#ebeb13"))
 
-	// confirm config view styles
-	dialogBoxStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("#874BFD")).
-			Padding(1, 0).
-			BorderTop(true).
-			BorderLeft(true).
-			BorderRight(true).
-			BorderBottom(true)
-
-	buttonStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#FFF7DB")).
-			Background(lipgloss.Color("#888B7E")).
-			Padding(0, 3).
-			MarginTop(1)
-
-	activeButtonStyle = buttonStyle.Copy().
-				Foreground(lipgloss.Color("#FFF7DB")).
-				Background(lipgloss.Color("#F25D94")).
-				MarginRight(2).
-				Underline(true)
-
-	propsStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("10")).
-			Border(lipgloss.NormalBorder()).
-			BorderForeground(lipgloss.Color("11")).
-			BorderLeft(false).
-			BorderRight(false).
-			MarginTop(1).
-			MarginBottom(1)
-
 	listItemStyle = lipgloss.NewStyle().
-			Margin(1).
+			MarginLeft(1).
 			Border(lipgloss.HiddenBorder()).
 			BorderRight(false).
 			BorderLeft(false).

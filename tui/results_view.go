@@ -12,8 +12,6 @@ import (
 	"github.com/charmbracelet/huh"
 )
 
-var resultCollectionActions = []string{"archive results", "download results"}
-
 func (m *ConfiguratorModel) InitResultsPreparation() *PrepareResultsModel {
 	numLastResults := 10
 	s := spinner.New()
@@ -79,28 +77,30 @@ func (m *ConfiguratorModel) handleResultsPreparationUpdate(msg tea.Msg) (tea.Mod
 func (m *ConfiguratorModel) handleResultsPreparationView() string {
 	var b strings.Builder
 
-	if m.resultsCollection.isCollected {
-		b.WriteString("Load test results have been downloaded!")
+	if m.resultsCollection.showConfirmation {
+		b.WriteString(m.resultsCollection.deletePodsConfirm.View())
 	} else {
-		if m.resultsCollection.err != nil {
-			b.WriteString(accentInfo.Render(m.resultsCollection.err.Error()))
+		if m.resultsCollection.isCollected {
+			b.WriteString("\nLoad test results have been downloaded!")
+		} else {
+			if m.resultsCollection.err != nil {
+				b.WriteString("\n" + accentInfo.Render(m.resultsCollection.err.Error()))
+			}
+			b.WriteString("\n" + m.resultsCollection.spinner.View() + " Preparing results...")
 		}
-		b.WriteString(m.resultsCollection.spinner.View() + " Preparing results...")
-	}
 
-	b.WriteString("\n\n")
-	for _, res := range m.resultsCollection.results {
-		b.WriteString(formatMsg(res) + "\n")
-	}
+		b.WriteString("\n\n")
+		for _, res := range m.resultsCollection.results {
+			b.WriteString(formatMsg(res) + "\n")
+		}
 
-	if !m.resultsCollection.isCollected {
-		b.WriteString(helpStyle.Render("Results are being collected..."))
-	} else {
-		b.WriteString("\n\n" + m.resultsCollection.deletePodsConfirm.View() + "\n")
-	}
+		if !m.resultsCollection.isCollected {
+			b.WriteString(helpStyle.Render("Results are being collected..."))
+		}
 
-	if m.resultsCollection.quitting {
-		b.WriteString(alertStyle.Render("\nPress 'ctrl+c' to exit"))
+		if m.resultsCollection.quitting {
+			b.WriteString(alertStyle.Render("\nPress 'ctrl+c' to exit"))
+		}
 	}
 
 	return appStyle.Render(b.String())

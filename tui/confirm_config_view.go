@@ -31,10 +31,6 @@ func (m *ConfiguratorModel) handleConfirmationUpdate(msg tea.Msg) (tea.Model, te
 				return m, m.preparation.spinner.Tick
 			}
 		}
-	case tea.WindowSizeMsg:
-		m.setupConfirmation.viewport.Width = msg.Width
-		m.setupConfirmation.viewport.Height = viewportHeight
-		cmds = append(cmds, viewport.Sync(m.setupConfirmation.viewport))
 	}
 
 	var fCmd tea.Cmd
@@ -128,6 +124,7 @@ func prepareRunInfo(pods []PodInfo) string {
 		b.WriteString(listItemStyle.Render(listItem))
 	}
 
+	b.WriteString("\n\n\n\n\n\n\n")
 	return b.String()
 }
 

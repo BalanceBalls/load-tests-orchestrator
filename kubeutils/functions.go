@@ -51,18 +51,6 @@ func executeRemoteCommand(ctx context.Context, restCfg *rest.Config, clientset *
 	return buf.String(), errBuf.String(), nil
 }
 
-func printPodsFromNamespace(ctx context.Context, clientset *kubernetes.Clientset, namespace string) {
-	res, err := clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	for _, p := range res.Items {
-		fmt.Println(p.GetName())
-	}
-}
-
 func switchLocalK8sContext(ctxName string) error {
 	switchCmd := exec.Command(
 		"kubectl",

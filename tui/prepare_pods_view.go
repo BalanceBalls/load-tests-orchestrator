@@ -106,6 +106,9 @@ func (m *ConfiguratorModel) beginSetup(ch chan<- kubeutils.ActionDone) {
 	var wg sync.WaitGroup
 	for _, pod := range m.preparation.pods {
 		wg.Add(1)
+		if m.preparation.err != "" {
+			break
+		}
 		go func(p PodInfo) {
 			defer wg.Done()
 			testInfo := kubeutils.TestInfo{

@@ -6,11 +6,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
 const logFileName = "newlog.jtl"
-const resultPathEnding = "Results"
 const resultsPath = "LoadTestResutls/"
 
 // Pod setup
@@ -71,27 +71,57 @@ func getTestUploadCommands(test TestInfo, namespace string) []localCommand {
 	_, scenarioFilePath := filepath.Split(test.ScenarioFileName)
 	_, propertiesFilePath := filepath.Split(test.PropFileName)
 
-	cpyScenarioCmd := exec.Command(
-		"kubectl",
-		"cp",
-		"-n",
-		namespace,
-		test.ScenarioFileName,
-		test.PodName+":/jmeter/"+scenarioFilePath,
-		"-c",
-		test.PodName,
-	)
+	var cpyScenarioCmd *exec.Cmd
+	var cpyProprsCmd *exec.Cmd
 
-	cpyProprsCmd := exec.Command(
-		"kubectl",
-		"cp",
-		"-n",
-		namespace,
-		test.PropFileName,
-		test.PodName+":/jmeter/"+propertiesFilePath,
-		"-c",
-		test.PodName,
-	)
+	if runtime.GOOS == "windows" {
+		currDir, _ := os.Getwd()
+		relPathToScenario, _ := filepath.Rel(currDir, test.ScenarioFileName)
+		cpyScenarioCmd = exec.Command(
+			"kubectl",
+			"cp",
+			"-n",
+			namespace,
+			relPathToScenario,
+			test.PodName+":/jmeter/"+scenarioFilePath,
+			"-c",
+			test.PodName,
+		)
+
+		relPathToProperties, _ := filepath.Rel(currDir, test.PropFileName)
+		cpyProprsCmd = exec.Command(
+			"kubectl",
+			"cp",
+			"-n",
+			namespace,
+			relPathToProperties,
+			test.PodName+":/jmeter/"+propertiesFilePath,
+			"-c",
+			test.PodName,
+		)
+	} else {
+		cpyScenarioCmd = exec.Command(
+			"kubectl",
+			"cp",
+			"-n",
+			namespace,
+			test.ScenarioFileName,
+			test.PodName+":/jmeter/"+scenarioFilePath,
+			"-c",
+			test.PodName,
+		)
+
+		cpyProprsCmd = exec.Command(
+			"kubectl",
+			"cp",
+			"-n",
+			namespace,
+			test.PropFileName,
+			test.PodName+":/jmeter/"+propertiesFilePath,
+			"-c",
+			test.PodName,
+		)
+	}
 
 	uploadScenario := localCommand{
 		displayName: "upload scenario file",

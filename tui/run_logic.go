@@ -12,7 +12,7 @@ import (
 
 const staleThreshold = 5
 
-var staleErr = errors.New("Test is likely failed to finish. Check pod")
+var errStale = errors.New("test is likely failed to finish. Check pod")
 
 type PodUpdate struct {
 	podIndex     int
@@ -117,7 +117,7 @@ func (m ConfiguratorModel) checkIfRunComplete(ctx context.Context, pods []RunPod
 		}
 
 		if pod.data.staleFor > staleThreshold {
-			podUpd.err = staleErr
+			podUpd.err = errStale
 			podUpd.inProgress = false
 			podUpd.state = Failed
 		}
