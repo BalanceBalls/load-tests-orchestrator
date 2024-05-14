@@ -68,4 +68,7 @@ var (
 			BorderRight(false).
 			BorderLeft(false).
 			BorderForeground(lipgloss.Color("11"))
+
+	activeDotStyle   = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "235", Dark: "252"}).Bold(true).Render("[+]")
+	inactiveDotStyle = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "250", Dark: "238"}).Render(" * ")
 )

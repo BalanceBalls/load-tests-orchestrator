@@ -150,7 +150,7 @@ func getPrepareRunTestCommand(test TestInfo) string {
 }
 
 func getRunTestCommand() string {
-	runTestCmd := "cd jmeter && sh ./run.sh"
+	runTestCmd := "cd jmeter && sh ./run.sh &"
 	return runTestCmd
 }
 
@@ -206,6 +206,6 @@ func getCheckSuccessfulFinishCommand() string {
 }
 
 func getCheckJmeterStateCommand() string {
-	checkJmeterCmd := "ps | grep jmeter && echo 'running' || echo 'stopped'"
+	checkJmeterCmd := "top -bn1 | grep jmeter && echo 'running' || echo 'stopped'"
 	return checkJmeterCmd
 }

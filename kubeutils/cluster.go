@@ -8,10 +8,31 @@ import (
 	"strings"
 	"time"
 
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/api/core/v1"
+	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
+
+func (c *PodsCache) TryGet(ctx context.Context, logger slog.Logger, podName, namespace string, clientset *kubernetes.Clientset) (*v1.Pod, error) {
+	if c.Pods[podName] != nil {
+		return c.Pods[podName], nil
+	}
+
+	logger.Info("pod cache missed. initializing cache value", slog.Any("pod", podName))
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	pod, err := clientset.CoreV1().Pods(namespace).Get(ctx, podName, v1meta.GetOptions{})
+
+	if err != nil {
+		return nil, err
+	}
+
+	c.Pods[podName] = pod
+	return pod, err
+}
 
 func (c *Cluster) Ping(ctx context.Context) (bool, error) {
 	connected, err := checkClusterConnection(ctx, c.Clientset)
@@ -22,9 +43,9 @@ func (c *Cluster) Ping(ctx context.Context) (bool, error) {
 }
 
 func (c *Cluster) CreatePod(ctx context.Context, podName string) error {
-	pod, err := createPod(ctx, c.Clientset, c.Namespace, podName)
+	pod, err := createPod(ctx, c.Clientset, c.Namespace, podName, c.PodKeepAliveSec)
 	if err != nil {
-		c.Logger.Error("Failed to create pod: ", slog.Any("err", err))
+		c.Logger.Error("failed to create pod: ", slog.Any("err", err))
 		return err
 	}
 
@@ -36,9 +57,9 @@ func (c *Cluster) CreatePod(ctx context.Context, podName string) error {
 
 func (c *Cluster) PreparePod(ctx context.Context, testInfo TestInfo, ch chan<- ActionDone) error {
 	podCreationStart := time.Now()
-	pod, err := createPod(ctx, c.Clientset, c.Namespace, testInfo.PodName)
+	pod, err := createPod(ctx, c.Clientset, c.Namespace, testInfo.PodName, c.PodKeepAliveSec)
 	if err != nil {
-		c.Logger.Error("Failed to create pod: ", slog.Any("err", err.Error()))
+		c.Logger.Error("failed to create pod: ", slog.Any("err", err.Error()))
 		return err
 	}
 
@@ -66,7 +87,7 @@ func (c *Cluster) PreparePod(ctx context.Context, testInfo TestInfo, ch chan<- A
 		start := time.Now()
 		strBuf, errBuf, err := executeRemoteCommand(ctx, c.RestCfg, c.Clientset, pod, cmd.command)
 		if err != nil {
-			c.Logger.Error("Failed to execute command: ", slog.Any("err", err.Error()))
+			c.Logger.Error("failed to execute command: ", slog.Any("err", err.Error()))
 			return err
 		}
 
@@ -76,8 +97,8 @@ func (c *Cluster) PreparePod(ctx context.Context, testInfo TestInfo, ch chan<- A
 			Duration: time.Since(start),
 		}
 
-		c.Logger.Info("Command strbuff: " + strBuf)
-		c.Logger.Info("Command errbuff: " + errBuf)
+		c.Logger.Info("command strbuff: " + strBuf)
+		c.Logger.Info("command errbuff: " + errBuf)
 	}
 
 	cpCmds := getTestUploadCommands(testInfo, c.Namespace)
@@ -88,11 +109,11 @@ func (c *Cluster) PreparePod(ctx context.Context, testInfo TestInfo, ch chan<- A
 		cpCmd.command.Stdout = os.Stdout
 		cpCmd.command.Stderr = os.Stderr
 
-		c.Logger.Info("Executing cmd: " + cpCmd.command.String())
+		c.Logger.Info("executing cmd: " + cpCmd.command.String())
 
 		err := cpCmd.command.Run()
 		if err != nil {
-			c.Logger.Error("Failed to copy file to pod: ", slog.Any("err", err.Error()))
+			c.Logger.Error("failed to copy file to pod: ", slog.Any("err", err.Error()))
 			return err
 		}
 
@@ -107,15 +128,23 @@ func (c *Cluster) PreparePod(ctx context.Context, testInfo TestInfo, ch chan<- A
 }
 
 func (c *Cluster) CheckProgress(ctx context.Context, testInfo TestInfo) (bool, string, error) {
-	pod, err := c.Clientset.CoreV1().Pods(c.Namespace).Get(ctx, testInfo.PodName, v1.GetOptions{})
+	isFinished := false
+	pod, err := c.PodsCache.TryGet(ctx, c.Logger, testInfo.PodName, c.Namespace, c.Clientset)
 
 	if err != nil {
 		c.Logger.Error(err.Error())
+		isFinished = true
+		err = errors.New("failed to reach pod")
+		return isFinished, "", err
 	}
 
-	stdOut, _, err := executeRemoteCommand(ctx, c.RestCfg, c.Clientset, pod, "cat jmeter/jmeter.log")
+	stdOut, errOut, err := executeRemoteCommand(ctx, c.RestCfg, c.Clientset, pod, "cat jmeter/jmeter.log")
 	if err != nil {
-		return false, stdOut, err
+		c.Logger.Error(err.Error())
+		c.Logger.Error(errOut)
+		isFinished = true
+		err = errors.New("failed to check run state. check pod's health")
+		return isFinished, stdOut, err
 	}
 
 	finishedRunIndicator := getCheckSuccessfulFinishCommand()
@@ -125,11 +154,12 @@ func (c *Cluster) CheckProgress(ctx context.Context, testInfo TestInfo) (bool, s
 	if jErr != nil {
 		c.Logger.Error(jErr.Error())
 		c.Logger.Error(errOut)
+		isFinished = true
+		err = errors.New("failed to check run state. check pod's health")
 	}
 
-	isFinished := false
-	c.Logger.Info("Jmeter state", slog.String("pod", testInfo.PodName), slog.String("state", jmeterState))
-	c.Logger.Info("Jmeter state err output", slog.String("pod", testInfo.PodName), slog.String("errOut", errOut))
+	c.Logger.Info("jmeter state", slog.String("pod", testInfo.PodName), slog.String("state", jmeterState))
+	c.Logger.Info("jmeter state err output", slog.String("pod", testInfo.PodName), slog.String("errOut", errOut))
 
 	jmeterState = strings.TrimSuffix(jmeterState, "\n")
 	if jmeterState == "stopped" {
@@ -144,7 +174,7 @@ func (c *Cluster) CheckProgress(ctx context.Context, testInfo TestInfo) (bool, s
 }
 
 func (c *Cluster) KickstartTestForPod(ctx context.Context, testInfo TestInfo) error {
-	pod, err := c.Clientset.CoreV1().Pods(c.Namespace).Get(ctx, testInfo.PodName, v1.GetOptions{})
+	pod, err := c.PodsCache.TryGet(ctx, c.Logger, testInfo.PodName, c.Namespace, c.Clientset)
 
 	if err != nil {
 		c.Logger.Error(err.Error())
@@ -158,7 +188,7 @@ func (c *Cluster) KickstartTestForPod(ctx context.Context, testInfo TestInfo) er
 }
 
 func (c *Cluster) CancelRunForPod(ctx context.Context, testInfo TestInfo) error {
-	pod, err := c.Clientset.CoreV1().Pods(c.Namespace).Get(ctx, testInfo.PodName, v1.GetOptions{})
+	pod, err := c.PodsCache.TryGet(ctx, c.Logger, testInfo.PodName, c.Namespace, c.Clientset)
 
 	if err != nil {
 		c.Logger.Error(err.Error())
@@ -171,7 +201,7 @@ func (c *Cluster) CancelRunForPod(ctx context.Context, testInfo TestInfo) error 
 }
 
 func (c *Cluster) ResetPodForNewRun(ctx context.Context, testInfo TestInfo) error {
-	pod, err := c.Clientset.CoreV1().Pods(c.Namespace).Get(ctx, testInfo.PodName, v1.GetOptions{})
+	pod, err := c.PodsCache.TryGet(ctx, c.Logger, testInfo.PodName, c.Namespace, c.Clientset)
 
 	if err != nil {
 		c.Logger.Error(err.Error())
@@ -189,7 +219,7 @@ func (c *Cluster) ResetPodForNewRun(ctx context.Context, testInfo TestInfo) erro
 }
 
 func (c *Cluster) CollectResultsFromPod(ctx context.Context, testInfo TestInfo, ch chan<- ActionDone) error {
-	pod, err := c.Clientset.CoreV1().Pods(c.Namespace).Get(ctx, testInfo.PodName, v1.GetOptions{})
+	pod, err := c.PodsCache.TryGet(ctx, c.Logger, testInfo.PodName, c.Namespace, c.Clientset)
 
 	if err != nil {
 		c.Logger.Error(err.Error())
@@ -214,11 +244,11 @@ func (c *Cluster) CollectResultsFromPod(ctx context.Context, testInfo TestInfo, 
 	downloadResultsCmd.command.Stdout = os.Stdout
 	downloadResultsCmd.command.Stderr = os.Stderr
 
-	c.Logger.Info("Executing cmd: " + downloadResultsCmd.command.String())
+	c.Logger.Info("executing cmd: " + downloadResultsCmd.command.String())
 
 	err = downloadResultsCmd.command.Run()
 	if err != nil {
-		c.Logger.Error("Failed to download results from pod: ", slog.Any("err", err.Error()))
+		c.Logger.Error("failed to download results from pod: ", slog.Any("err", err.Error()))
 		return err
 	}
 
@@ -234,7 +264,7 @@ func (c *Cluster) CollectResultsFromPod(ctx context.Context, testInfo TestInfo, 
 func (c *Cluster) DeletePod(ctx context.Context, podName string) error {
 	err := deletePod(ctx, c.Clientset, c.Namespace, podName)
 	if err != nil {
-		c.Logger.Error("Failed to delete pod: ", slog.Any("err", err.Error()))
+		c.Logger.Error("failed to delete pod: ", slog.Any("err", err.Error()))
 		return err
 	}
 

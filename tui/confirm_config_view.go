@@ -2,7 +2,6 @@ package tui
 
 import (
 	"strings"
-	"terminalui/kubeutils"
 
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -23,11 +22,11 @@ func (m *ConfiguratorModel) handleConfirmationUpdate(msg tea.Msg) (tea.Model, te
 		case "b":
 			m.currentView = PodsSetup
 		case "ctrl+p":
-			setupPods(m)
+			m.setupPods()
 			return m, m.preparation.spinner.Tick
 		case "c":
 			if m.setupConfirmation.isConfirmed {
-				setupPods(m)
+				m.setupPods()
 				return m, m.preparation.spinner.Tick
 			}
 		}
@@ -50,23 +49,6 @@ func (m *ConfiguratorModel) handleConfirmationUpdate(msg tea.Msg) (tea.Model, te
 	cmds = append(cmds, cmd, fCmd)
 
 	return m, tea.Batch(cmds...)
-}
-
-func setupPods(m *ConfiguratorModel) {
-	pf := m.InitPodsPreparation()
-	m.preparation = pf
-	m.currentView = PreparePods
-
-	go func() {
-		ch := make(chan kubeutils.ActionDone)
-		defer close(ch)
-		go m.beginSetup(ch)
-
-		for r := range ch {
-			m.Update(r)
-			m.Update(m.preparation.spinner.Tick)
-		}
-	}()
 }
 
 func (m ConfiguratorModel) handleConfirmationView() string {

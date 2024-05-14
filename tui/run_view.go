@@ -68,7 +68,7 @@ func (cm *ConfiguratorModel) handleRunViewUpdate(msg tea.Msg) (tea.Model, tea.Cm
 
 		if m.runState == Done {
 			if msg.String() == "c" && cm.currentView == Run {
-				collectResults(cm)
+				cm.collectResults()
 				return cm, cm.resultsCollection.spinner.Tick
 			}
 		} else {
@@ -159,8 +159,8 @@ func (m *ConfiguratorModel) InitRunView() *TestRunModel {
 	p := paginator.New()
 	p.Type = paginator.Dots
 	p.PerPage = 1
-	p.ActiveDot = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "235", Dark: "252"}).Bold(true).Render("[+]")
-	p.InactiveDot = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "250", Dark: "238"}).Render(" * ")
+	p.ActiveDot = activeDotStyle
+	p.InactiveDot = inactiveDotStyle
 
 	p.SetTotalPages(podsAmount)
 

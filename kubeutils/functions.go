@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"slices"
+	"strconv"
 	"time"
 
 	core "k8s.io/api/core/v1"
@@ -38,6 +39,10 @@ func executeRemoteCommand(ctx context.Context, restCfg *rest.Config, clientset *
 			TTY:       false,
 		}, scheme.ParameterCodec)
 	exec, err := remotecommand.NewSPDYExecutor(restCfg, "POST", request.URL())
+	if err != nil {
+		return "", "", err
+	}
+
 	err = exec.StreamWithContext(ctx, remotecommand.StreamOptions{
 		Stdout: buf,
 		Stderr: errBuf,
@@ -45,7 +50,7 @@ func executeRemoteCommand(ctx context.Context, restCfg *rest.Config, clientset *
 	})
 
 	if err != nil {
-		return "", "", fmt.Errorf("%w Failed executing command %s on %v/%v", err, command, pod.Namespace, pod.Name)
+		return "", "", fmt.Errorf("%w failed executing command %s on %v/%v", err, command, pod.Namespace, pod.Name)
 	}
 
 	return buf.String(), errBuf.String(), nil
@@ -80,19 +85,19 @@ func checkClusterConnection(ctx context.Context, clientset *kubernetes.Clientset
 	path := "/healthz"
 	content, err := clientset.Discovery().RESTClient().Get().AbsPath(path).DoRaw(ctx)
 	if err != nil {
-		return false, errors.New("Failed to connect to cluster. Reason: " + err.Error())
+		return false, errors.New("failed to connect to cluster. Reason: " + err.Error())
 	}
 
 	contentStr := string(content)
 	if contentStr != "ok" {
-		return false, errors.New("Cluster not healthy")
+		return false, errors.New("cluster not healthy")
 	}
 
 	return true, nil
 }
 
-func createPod(ctx context.Context, clientset *kubernetes.Clientset, namespace, podName string) (*v1.Pod, error) {
-	podDefinition := getPodObject(namespace, podName)
+func createPod(ctx context.Context, clientset *kubernetes.Clientset, namespace, podName string, keepAliveSec int) (*v1.Pod, error) {
+	podDefinition := getPodObject(namespace, podName, keepAliveSec)
 	pod, err := clientset.CoreV1().Pods(namespace).Create(ctx, podDefinition, metav1.CreateOptions{})
 	if err != nil {
 		return nil, err
@@ -103,7 +108,7 @@ func createPod(ctx context.Context, clientset *kubernetes.Clientset, namespace, 
 	for {
 		select {
 		case <-onlineCtx.Done():
-			break
+			return nil, errors.New("cancelled")
 		default:
 			status, err := clientset.CoreV1().Pods(namespace).Get(ctx, pod.Name, metav1.GetOptions{})
 			if err != nil {
@@ -125,7 +130,7 @@ func createPod(ctx context.Context, clientset *kubernetes.Clientset, namespace, 
 	}
 }
 
-func getPodObject(namespace, podName string) *core.Pod {
+func getPodObject(namespace, podName string, keepAliveSec int) *core.Pod {
 	return &core.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      podName,
@@ -135,6 +140,8 @@ func getPodObject(namespace, podName string) *core.Pod {
 			},
 		},
 		Spec: core.PodSpec{
+			// Restarts are pointless since a pod will be erased on restart
+			RestartPolicy: core.RestartPolicyNever,
 			Containers: []core.Container{
 				{
 					Name:            podName,
@@ -142,7 +149,7 @@ func getPodObject(namespace, podName string) *core.Pod {
 					ImagePullPolicy: core.PullIfNotPresent,
 					Command: []string{
 						"sleep",
-						"3600",
+						strconv.Itoa(keepAliveSec),
 					},
 				},
 			},

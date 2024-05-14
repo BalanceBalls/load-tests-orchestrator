@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"sync"
 	"terminalui/kubeutils"
 
 	"github.com/charmbracelet/bubbles/spinner"
@@ -92,29 +91,4 @@ func (m *ConfiguratorModel) handlePodsPreparationView() string {
 	}
 
 	return appStyle.Render(b.String())
-}
-
-func (m *ConfiguratorModel) beginSetup(ch chan<- kubeutils.ActionDone) {
-	var wg sync.WaitGroup
-	for _, pod := range m.preparation.pods {
-		wg.Add(1)
-		if m.preparation.err != "" {
-			break
-		}
-		go func(p PodInfo) {
-			defer wg.Done()
-			testInfo := kubeutils.TestInfo{
-				PodName:          p.name,
-				PropFileName:     p.propsFilePath,
-				ScenarioFileName: p.scenarioFilePath,
-			}
-			err := m.cluster.PreparePod(m.preparation.ctx, testInfo, ch)
-			if err != nil {
-				m.preparation.err = err.Error()
-				return
-			}
-		}(pod)
-	}
-	wg.Wait()
-	m.preparation.quitting = true
 }

@@ -1,27 +1,17 @@
 package tui
 
 import (
-	"context"
 	"errors"
 	"fmt"
-	"log/slog"
-	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
-	"terminalui/kubeutils"
 	"time"
 
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"k8s.io/client-go/kubernetes"
 )
-
-type configDone struct {
-	connectionOk bool
-}
 
 func (m ConfiguratorModel) handleConfigFormView() string {
 	var b strings.Builder
@@ -86,15 +76,15 @@ func (m *ConfiguratorModel) initConfigForm() {
 			t.Validate = func(input string) error {
 				numPod, err := strconv.Atoi(input)
 				if err != nil {
-					m.configForm.err = errors.New("Input must be a number")
+					m.configForm.err = errors.New("input must be a number")
 					return m.configForm.err
 				}
 				if numPod < 1 {
-					m.configForm.err = errors.New("Need at least one pod")
+					m.configForm.err = errors.New("need at least one pod")
 					return m.configForm.err
 				}
 				if numPod > 99 {
-					m.configForm.err = errors.New("Max amount exceeded")
+					m.configForm.err = errors.New("max amount exceeded")
 					return m.configForm.err
 				}
 
@@ -112,33 +102,6 @@ func (m *ConfiguratorModel) initConfigForm() {
 	m.configForm.spinner = s
 	m.configForm.connectionEstablished = false
 	m.configForm.showSpinner = false
-}
-
-func (m *ConfiguratorModel) getClusterConfig(kubeCtx string) (*kubeutils.Cluster, error) {
-	homeDir, _ := os.UserHomeDir()
-	defaultPath := filepath.Join(homeDir, ".kube", "config")
-
-	config, err := kubeutils.BuildConfigWithContextFromFlags(kubeCtx, defaultPath)
-	if err != nil {
-		m.logger.Error("Error creating Kubernetes client configuration: ", slog.Any("err", err))
-		return nil, err
-	}
-
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		m.logger.Error("Error creating Kubernetes client: ", slog.Any("err", err))
-		return nil, err
-	}
-
-	cluster := kubeutils.Cluster{
-		RestCfg:     config,
-		Clientset:   clientset,
-		PodPrefix:   m.configForm.inputs[0].Value(),
-		Namespace:   m.configForm.inputs[1].Value(),
-		KubeCtxName: m.configForm.inputs[2].Value(),
-		Logger:      *m.logger,
-	}
-	return &cluster, nil
 }
 
 func (m *ConfiguratorModel) handleConfigFormUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -160,7 +123,7 @@ func (m *ConfiguratorModel) handleConfigFormUpdate(msg tea.Msg) (tea.Model, tea.
 					m.configForm.inputs[1].Value() == "" ||
 					m.configForm.inputs[2].Value() == "" ||
 					m.configForm.inputs[3].Value() == "" {
-					m.configForm.err = errors.New("Incorrect configuration")
+					m.configForm.err = errors.New("incorrect configuration")
 					return m, nil
 				}
 				m.configForm.err = nil
@@ -178,7 +141,7 @@ func (m *ConfiguratorModel) handleConfigFormUpdate(msg tea.Msg) (tea.Model, tea.
 				m.cluster = cfg
 
 				go func() {
-					ch := make(chan configDone)
+					ch := make(chan ConfigDone)
 					defer close(ch)
 
 					go m.checkClusterConnection(ch)
@@ -218,7 +181,7 @@ func (m *ConfiguratorModel) handleConfigFormUpdate(msg tea.Msg) (tea.Model, tea.
 
 			return m, tea.Batch(cmds...)
 		}
-	case configDone:
+	case ConfigDone:
 		totalPages, err := strconv.Atoi(m.configForm.inputs[3].Value())
 		if err != nil {
 			panic(err)
@@ -250,14 +213,4 @@ func (m *ConfiguratorModel) updateInputs(msg tea.Msg) tea.Cmd {
 	}
 
 	return tea.Batch(cmds...)
-}
-
-func (m *ConfiguratorModel) checkClusterConnection(ch chan<- configDone) {
-	isConnected, err := m.cluster.Ping(context.TODO())
-	if err != nil {
-		m.configForm.err = err
-	}
-
-	m.configForm.connectionEstablished = isConnected
-	ch <- configDone{connectionOk: isConnected}
 }

@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"terminalui/kubeutils"
 
-	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/filepicker"
 	"github.com/charmbracelet/bubbles/paginator"
 	"github.com/charmbracelet/bubbles/spinner"
@@ -22,6 +21,10 @@ type PodInfo struct {
 	scenarioFilePath string
 }
 
+type ConfigDone struct {
+	ConnectionOk bool
+}
+
 type PodLogs struct {
 	// How many consecutive checks logs remain unchanged
 	staleFor int
@@ -30,12 +33,10 @@ type PodLogs struct {
 
 type ConfigViewModel struct {
 	focusIndex            int
-	cursorMode            cursor.Mode
 	inputs                []textinput.Model
 	spinner               spinner.Model
 	showSpinner           bool
 	connectionEstablished bool
-	done                  configDone
 	err                   error
 }
 
@@ -75,11 +76,12 @@ type ConfirmationModel struct {
 }
 
 type ConfiguratorModel struct {
-	ctx         context.Context
-	logger      *slog.Logger
-	currentView AppViewState
-	currentPod  int
-	pods        []PodInfo
+	ctx               context.Context
+	logger            *slog.Logger
+	currentView       AppViewState
+	pods              []PodInfo
+	podKeepAliveSec   int
+	updateIntervalSec int
 
 	cluster           *kubeutils.Cluster
 	paginator         *paginator.Model
@@ -115,10 +117,13 @@ type FilePickerModule struct {
 	mode         int
 }
 
-type RunConfigData struct {
-	namespace  string
-	podsAmount int
-	pods       []RunPodInfo
+type PodUpdate struct {
+	podIndex     int
+	logs         string
+	staleCounter int
+	inProgress   bool
+	state        TestRunState
+	err          error
 }
 
 type RunPodInfo struct {
@@ -128,6 +133,8 @@ type RunPodInfo struct {
 	err        error
 	resultPath string
 }
+
+type ClearErrorMsg struct{}
 
 type AppViewState uint
 

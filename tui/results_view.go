@@ -3,9 +3,7 @@ package tui
 import (
 	"context"
 	"strings"
-	"sync"
 	"terminalui/kubeutils"
-	"time"
 
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
@@ -106,62 +104,10 @@ func (m *ConfiguratorModel) handleResultsPreparationView() string {
 	return appStyle.Render(b.String())
 }
 
-func (m *ConfiguratorModel) saveResults(ch chan<- kubeutils.ActionDone) {
-	var wg sync.WaitGroup
-	for _, pod := range m.run.pods {
-		wg.Add(1)
-		go func(p RunPodInfo) {
-			defer wg.Done()
-
-			testInfo := kubeutils.TestInfo{
-				PodName: p.name,
-			}
-			err := m.cluster.CollectResultsFromPod(m.preparation.ctx, testInfo, ch)
-			if err != nil {
-				m.resultsCollection.err = err
-				return
-			}
-		}(pod)
-	}
-	wg.Wait()
-	m.resultsCollection.isCollected = true
-	m.resultsCollection.showConfirmation = true
-}
-
 func (m *PrepareResultsModel) getConfirmationDialog() *huh.Confirm {
 	return huh.NewConfirm().
 		Title(accentInfo.Render("Would you like to delete JMeter pods?")).
 		Affirmative("Yes").
 		Negative("No").
 		Key("conf")
-}
-
-func (m *ConfiguratorModel) deletePods() {
-	m.resultsCollection.showConfirmation = false
-
-	var wg sync.WaitGroup
-	for _, pod := range m.run.pods {
-		wg.Add(1)
-		go func(p RunPodInfo) {
-			defer wg.Done()
-			deleteStart := time.Now()
-			err := m.cluster.DeletePod(m.resultsCollection.ctx, p.name)
-			if err != nil {
-				m.logger.Error(err.Error())
-				m.resultsCollection.err = err
-				return
-			}
-			m.logger.Info("remove pod goroutine complete")
-
-			result := kubeutils.ActionDone{
-				PodName:  p.name,
-				Name:     "pod has been terminated",
-				Duration: time.Since(deleteStart),
-			}
-			m.Update(result)
-		}(pod)
-	}
-
-	wg.Wait()
-	m.resultsCollection.quitting = true
 }

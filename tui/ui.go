@@ -10,14 +10,16 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-func loadTestConfiguratorModel(appCtx context.Context, appLogger *slog.Logger) *ConfiguratorModel {
+func loadTestConfiguratorModel(appCtx context.Context, appLogger *slog.Logger, updateIntervalSec int, podKeepAliveSec int) *ConfiguratorModel {
 	m := ConfiguratorModel{
-		ctx:         appCtx,
-		logger:      appLogger,
-		currentView: Config}
+		ctx:               appCtx,
+		logger:            appLogger,
+		updateIntervalSec: updateIntervalSec,
+		podKeepAliveSec:   podKeepAliveSec,
+		currentView:       Config}
 
 	m.initConfigForm()
-	m.logger.Info("First form initiated")
+	m.logger.Info("First form initiated", slog.Any("pod keep alive", podKeepAliveSec), slog.Any("upd interval", updateIntervalSec))
 
 	return &m
 }
@@ -80,10 +82,10 @@ func (m *ConfiguratorModel) View() string {
 	}
 }
 
-func DisplayUI(ctx context.Context, logger *slog.Logger) {
+func DisplayUI(ctx context.Context, logger *slog.Logger, updateIntervalSec int, podKeepAliveSec int) {
 	logger.Info("Loading UI...")
 	configurationProgram := tea.NewProgram(
-		loadTestConfiguratorModel(ctx, logger),
+		loadTestConfiguratorModel(ctx, logger, updateIntervalSec, podKeepAliveSec),
 		tea.WithAltScreen(),
 		tea.WithMouseCellMotion())
 

@@ -10,11 +10,9 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-type clearErrorMsg struct{}
-
 func clearErrorAfter(t time.Duration) tea.Cmd {
 	return tea.Tick(t, func(_ time.Time) tea.Msg {
-		return clearErrorMsg{}
+		return ClearErrorMsg{}
 	})
 }
 
@@ -41,7 +39,7 @@ func (m *ConfiguratorModel) handleFilepickerUpdate(msg tea.Msg) (tea.Model, tea.
 				return m, nil
 			}
 		}
-	case clearErrorMsg:
+	case ClearErrorMsg:
 		m.err = nil
 	}
 

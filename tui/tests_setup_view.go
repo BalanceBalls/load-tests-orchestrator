@@ -8,7 +8,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/paginator"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
 
 func (m *ConfiguratorModel) handleTestsSetupView() string {
@@ -96,8 +95,8 @@ func (m *ConfiguratorModel) initTestsSetupView(totalPages int) {
 	p := paginator.New()
 	p.Type = paginator.Dots
 	p.PerPage = 1
-	p.ActiveDot = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "235", Dark: "252"}).Bold(true).Render("[+]")
-	p.InactiveDot = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "250", Dark: "238"}).Render(" * ")
+	p.ActiveDot = activeDotStyle
+	p.InactiveDot = inactiveDotStyle
 	p.SetTotalPages(totalPages)
 
 	podPrefix := m.configForm.inputs[0].Value()
